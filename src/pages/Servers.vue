@@ -1,0 +1,751 @@
+<template>
+  <v-container>
+    <v-card>
+      <v-card-title class="text-h5 py-4 d-flex align-center">
+        Server Plans
+        <v-chip 
+          class="ml-2" 
+          color="primary" 
+          size="small"
+        >
+          Subsidiary: {{ selectedSite?.code || 'IE' }}
+        </v-chip>
+        <v-spacer />
+        <v-btn
+          color="primary"
+          variant="elevated"
+          prepend-icon="mdi-refresh"
+          :loading="loading"
+          :disabled="!apiToken"
+          @click="fetchServers"
+        >
+          Refresh Servers
+        </v-btn>
+      </v-card-title>
+      
+      <v-card-text>
+        <div v-if="loading">
+          <v-progress-circular 
+            indeterminate 
+            color="primary" 
+          />
+          <span class="ml-2">Loading server catalog...</span>
+        </div>
+        
+        <v-alert
+          v-else-if="serverError"
+          type="error"
+          title="Error"
+          :text="serverError.message || 'Failed to load server catalog'"
+        />
+        
+        <v-alert
+          v-else-if="!serverCatalog || !serverCatalog.plans || serverCatalog.plans.length === 0"
+          type="info"
+          text="No server plans available"
+        />
+        
+        <div v-else>
+          <!-- Manual Plan Code Input Button -->
+          <v-card 
+            variant="outlined" 
+            class="mb-4 pa-4"
+          >
+            <v-card-title class="text-subtitle-1">
+              <v-icon 
+                icon="mdi-keyboard" 
+                color="primary" 
+                class="mr-2" 
+              />
+              Manually Add Server by Plan Code
+            </v-card-title>
+            <v-card-text>
+              <p class="text-body-2 mb-4">
+                If you know the exact OVH plan code for a server, you can manually add it to your cart.
+              </p>
+              <v-btn 
+                color="primary" 
+                variant="elevated" 
+                prepend-icon="mdi-plus"
+                @click="showManualPlanCodeDialog = true"
+              >
+                Enter Plan Code
+              </v-btn>
+            </v-card-text>
+          </v-card>
+          
+          <v-row>
+            <v-col 
+              v-for="(plan, index) in serverCatalog.plans"
+              :key="index"
+              cols="12" 
+              md="4"
+            >
+              <v-card class="h-100">
+                <v-card-title class="text-h6">
+                  {{ plan.planCode || 'Server Plan' }}
+                </v-card-title>
+                <v-card-subtitle 
+                  v-if="plan.invoiceName" 
+                  class="text-subtitle-1 font-weight-bold"
+                >
+                  {{ plan.invoiceName }}
+                </v-card-subtitle>
+                <v-card-subtitle v-else-if="plan.description">
+                  {{ plan.description }}
+                </v-card-subtitle>
+                <v-card-text>
+                  <v-list density="compact">
+                    <!-- Family info -->
+                    <v-list-item v-if="plan.family">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-server" 
+                          color="primary" 
+                        />
+                      </template>
+                      <v-list-item-title>Family</v-list-item-title>
+                      <v-list-item-subtitle>{{ plan.family }}</v-list-item-subtitle>
+                    </v-list-item>
+                    
+                    <!-- Product type -->
+                    <v-list-item v-if="plan.productType">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-tag" 
+                          color="primary" 
+                        />
+                      </template>
+                      <v-list-item-title>Type</v-list-item-title>
+                      <v-list-item-subtitle>{{ plan.productType }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <!-- Memory info -->
+                    <v-list-item v-if="getAddonInfo(plan, 'memory')">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-memory" 
+                          color="green" 
+                        />
+                      </template>
+                      <v-list-item-title>Memory</v-list-item-title>
+                      <v-list-item-subtitle>{{ getAddonInfo(plan, 'memory') }}</v-list-item-subtitle>
+                    </v-list-item>
+
+                    <!-- Storage info -->
+                    <v-list-item v-if="getAddonInfo(plan, 'storage')">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-harddisk" 
+                          color="amber" 
+                        />
+                      </template>
+                      <v-list-item-title>Storage</v-list-item-title>
+                      <v-list-item-subtitle>{{ getAddonInfo(plan, 'storage') }}</v-list-item-subtitle>
+                    </v-list-item>
+                    
+                    <!-- Bandwidth info -->
+                    <v-list-item v-if="getAddonInfo(plan, 'bandwidth')">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-speedometer" 
+                          color="purple" 
+                        />
+                      </template>
+                      <v-list-item-title>Bandwidth</v-list-item-title>
+                      <v-list-item-subtitle>{{ getAddonInfo(plan, 'bandwidth') }}</v-list-item-subtitle>
+                    </v-list-item>
+                    
+                    <!-- Price info -->
+                    <v-list-item v-if="getPlanPrice(plan)">
+                      <template #prepend>
+                        <v-icon 
+                          icon="mdi-currency-eur" 
+                          color="primary" 
+                        />
+                      </template>
+                      <v-list-item-title>Price</v-list-item-title>
+                      <v-list-item-subtitle>{{ getPlanPrice(plan) }}</v-list-item-subtitle>
+                    </v-list-item>
+                  </v-list>
+                  
+                  <v-chip-group 
+                          v-if="plan.properties && plan.properties.length > 0"
+                          class="mt-3"
+                        >
+                    <v-chip
+                      v-for="(prop, propIndex) in plan.properties"
+                      :key="propIndex"
+                      size="small"
+                      variant="outlined"
+                      :color="getPropertyColor(prop.name)"
+                    >
+                      {{ prop.name }}: {{ prop.value }}
+                    </v-chip>
+                  </v-chip-group>
+                  
+                  <!-- Configuration options -->
+                  <div v-if="plan.configurations && plan.configurations.length > 0" class="mt-4">
+                    <v-subheader>Available Configurations</v-subheader>
+                    <div 
+                      v-for="(config, configIndex) in plan.configurations" 
+                      :key="configIndex" 
+                      class="mb-2"
+                    >
+                      <v-chip
+                        size="small"
+                        color="info"
+                        class="mr-2"
+                      >
+                        {{ config.name }}
+                      </v-chip>
+                      <span 
+                        class="text-caption"
+                      >
+                        {{ config.isMandatory ? '(Required)' : '(Optional)' }}
+                      </span>
+                      <div 
+                          class="mt-1 text-caption"
+                        >
+                        <span v-if="config.values && config.values.length > 0">
+                          Options: {{ config.values.join(', ') }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </v-card-text>
+                <v-card-actions>
+                  <v-btn
+                    color="primary"
+                    variant="text"
+                    :loading="plan.addingToCart"
+                    :disabled="!activeCartId || !plan.planCode"
+                    @click="addServerToCart(plan)"
+                  >
+                    Add to Cart
+                  </v-btn>
+                  <v-btn
+                    color="primary"
+                    variant="text"
+                    @click="showServerDetails(plan)"
+                  >
+                    View Details
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
+      </v-card-text>
+    </v-card>
+
+    <!-- Manual Plan Code Dialog -->
+    <v-dialog
+      v-model="showManualPlanCodeDialog"
+      max-width="500px"
+    >
+      <v-card>
+        <v-card-title class="text-h5">
+            Add Server by Plan Code
+          </v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="addServerByPlanCode">
+            <v-text-field
+              v-model="manualPlanCode"
+              label="Plan Code"
+              hint="Enter the exact OVH plan code"
+              persistent-hint
+              :rules="[v => !!v || 'Plan code is required']"
+              required
+              class="mb-4"
+            />
+            
+            <v-select
+              v-model="manualDuration"
+              :items="durations"
+              item-title="text"
+              item-value="value"
+              label="Duration"
+              hint="Select contract duration"
+              persistent-hint
+              class="mb-4"
+            />
+            
+            <v-text-field
+              v-model="manualQuantity"
+              label="Quantity"
+              type="number"
+              min="1"
+              hint="Number of items to add"
+              persistent-hint
+              :rules="[v => !!v && v > 0 || 'Quantity must be at least 1']"
+              required
+            />
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            color="error"
+            variant="text"
+            @click="showManualPlanCodeDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            :loading="addingManualPlan"
+            @click="addServerByPlanCode"
+          >
+            Add to Cart
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Server Details Dialog -->
+    <v-dialog
+      v-model="showServerDetailsDialog"
+      max-width="600px"
+    >
+      <v-card v-if="selectedServer">
+        <v-card-title class="text-h5">
+          {{ selectedServer.planCode }}
+          <v-chip
+            v-if="selectedServer.family"
+            size="small"
+            color="primary"
+            class="ml-2"
+          >
+            {{ selectedServer.family }}
+          </v-chip>
+        </v-card-title>
+        <v-card-subtitle v-if="selectedServer.description">
+          {{ selectedServer.description }}
+        </v-card-subtitle>
+        <v-card-text>
+          <v-list density="compact">
+            <v-list-item 
+              v-for="(prop, index) in selectedServer.properties" 
+              :key="index"
+            >
+              <v-list-item-title>{{ prop.name }}</v-list-item-title>
+              <v-list-item-subtitle>{{ prop.value }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item v-if="getPlanPrice(selectedServer)">
+              <v-list-item-title>Price</v-list-item-title>
+              <v-list-item-subtitle>{{ getPlanPrice(selectedServer) }}</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+
+          <v-divider class="my-4" />
+          
+          <!-- Duration selection -->
+          <v-select
+            v-model="selectedDuration"
+            :items="durations"
+            item-title="text"
+            item-value="value"
+            label="Contract Duration"
+            hint="Select your preferred contract duration"
+            persistent-hint
+            class="mb-4"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            @click="showServerDetailsDialog = false"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            :loading="selectedServer.addingToCart"
+            :disabled="!activeCartId || !selectedServer.planCode"
+            @click="addSelectedServerToCart"
+          >
+            Add to Cart
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue';
+
+// Props from parent component
+const props = defineProps({
+  apiToken: {
+    type: String,
+    required: true
+  },
+  selectedSite: {
+    type: Object,
+    default: () => ({ code: 'IE' })
+  },
+  activeCartId: {
+    type: String,
+    default: ''
+  }
+});
+
+// Emit events to parent
+const emit = defineEmits([
+  'refresh-cart-details',
+  'show-success',
+  'show-error'
+]);
+
+// State
+const loading = ref(false);
+const serverError = ref(null);
+const serverCatalog = ref({ plans: [] });
+const showManualPlanCodeDialog = ref(false);
+const addingManualPlan = ref(false);
+const manualPlanCode = ref('');
+const manualDuration = ref('P1M');
+const manualQuantity = ref(1);
+const showServerDetailsDialog = ref(false);
+const selectedServer = ref(null);
+const selectedDuration = ref('P1M');
+
+// Durations list for selection
+const durations = [
+  { text: '1 Month', value: 'P1M' },
+  { text: '3 Months', value: 'P3M' },
+  { text: '6 Months', value: 'P6M' },
+  { text: '12 Months', value: 'P1Y' },
+  { text: '24 Months', value: 'P2Y' }
+];
+
+// Function to get API endpoint
+const getApiEndpoint = () => {
+  return 'https://eu.api.ovh.com/v1';
+};
+
+// Function to extract addon family information
+const getAddonInfo = (plan, familyName) => {
+  if (!plan.addonFamilies || plan.addonFamilies.length === 0) {
+    return null;
+  }
+
+  const family = plan.addonFamilies.find(f => f.name === familyName);
+  if (!family) {
+    return null;
+  }
+
+  // Return default addon if available, otherwise first addon
+  const addonCode = family.default || (family.addons && family.addons.length > 0 ? family.addons[0] : null);
+  if (!addonCode) {
+    return null;
+  }
+
+  // Format the addon code for display
+  return formatAddonCode(addonCode);
+};
+
+// Format addon codes to be more readable
+const formatAddonCode = (code) => {
+  // Replace hyphens with spaces
+  let formatted = code.replace(/-/g, ' ');
+  
+  // Extract specific information based on patterns in the code
+  if (code.includes('ram-')) {
+    // Examples: ram-128g-ecc-2666-24sys -> 128GB ECC RAM
+    const match = code.match(/ram-(\d+)g/);
+    if (match && match[1]) {
+      return `${match[1]}GB RAM`;
+    }
+  } else if (code.includes('bandwidth-')) {
+    // Examples: bandwidth-500-24sys -> 500 Mbps
+    const match = code.match(/bandwidth-(\d+)/);
+    if (match && match[1]) {
+      return `${match[1]} Mbps`;
+    }
+  } else if (code.includes('raid') && code.includes('nvme')) {
+    // Extract storage size for NVMe drives
+    const match = code.match(/-(\d+)nvme/);
+    if (match && match[1]) {
+      return `${match[1]}GB NVMe SSD`;
+    }
+  } else if (code.includes('raid') && code.includes('sa')) {
+    // Extract storage size for SATA drives
+    const match = code.match(/-(\d+)sa/);
+    if (match && match[1]) {
+      return `${match[1]}GB SATA Drive`;
+    }
+  }
+  
+  // If no specific pattern matched, return the cleaned up code
+  return formatted;
+};
+
+// Function to get plan price
+const getPlanPrice = (plan) => {
+  if (!plan.pricings || plan.pricings.length === 0) {
+    return 'Price not available';
+  }
+  
+  const pricing = plan.pricings[0];
+  
+  // Price is a numeric value in the sample data (in micro units, need to convert to standard currency)
+  if (typeof pricing.price === 'number') {
+    // Convert from micro units (e.g., 2999000000) to standard currency (e.g., 29.99)
+    const priceValue = (pricing.price / 100000000).toFixed(2);
+    // Use EUR as default currency or customize based on your needs
+    return `€${priceValue}`;
+  } 
+  // Handle legacy format if present
+  else if (pricing.price && typeof pricing.price === 'object') {
+    return `${pricing.price.text || `${pricing.price.value} ${pricing.price.currencyCode || 'EUR'}`}`;
+  }
+  
+  return 'Price not available';
+};
+
+// Function to get property color
+const getPropertyColor = (propName) => {
+  const colorMap = {
+    'cpu': 'blue',
+    'ram': 'green',
+    'disk': 'amber',
+    'storage': 'amber',
+    'bandwidth': 'purple',
+    'network': 'purple',
+    'location': 'red',
+    'region': 'red',
+    'datacenter': 'red'
+  };
+  
+  const key = Object.keys(colorMap).find(key => propName.toLowerCase().includes(key));
+  return key ? colorMap[key] : 'grey';
+};
+
+// Fetch servers from OVH API
+const fetchServers = async () => {
+
+  
+  loading.value = true;
+  serverError.value = null;
+  
+  try {
+    const headers = {
+      // 'Authorization': `Bearer ${props['api-token']}`,
+      'Content-Type': 'application/json'
+    };
+    
+    // Get the current subsidiary code from the selected site
+    const subsidiaryCode = props.selectedSite ? props.selectedSite.code : 'IE';
+    
+    const apiEndpoint = getApiEndpoint();
+    const response = await fetch(`${apiEndpoint}/order/catalog/public/eco?ovhSubsidiary=${subsidiaryCode}`, {
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch server catalog: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Initialize addingToCart property for each plan
+    if (data.plans && data.plans.length > 0) {
+      data.plans.forEach(plan => {
+        plan.addingToCart = false;
+      });
+    }
+    
+    serverCatalog.value = data;
+    console.log('Server catalog for subsidiary', subsidiaryCode, ':', data);
+  } catch (err) {
+    console.error('Error fetching server catalog:', err);
+    serverError.value = err;
+    showError(err.message);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Show success notification
+const showSuccess = (message) => {
+  // Can be implemented with Vuetify snackbar if needed
+  console.log('Success:', message);
+  emit('show-success', message);
+};
+
+// Show error notification
+const showError = (message) => {
+  // Can be implemented with Vuetify snackbar if needed
+  console.error('Error:', message);
+  emit('show-error', message);
+};
+
+// Function to add server to cart
+const addServerToCart = async (plan) => {
+  if (!props['active-cart-id'] || !plan.planCode) {
+    showError('Cannot add server to cart. Please select an active cart first.');
+    return;
+  }
+  
+  // Set loading state for this specific plan
+  if (plan) {
+    plan.addingToCart = true;
+  }
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${props.apiToken}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${props['active-cart-id']}/eco`;
+    
+    console.log('Adding server to cart:', plan.planCode, 'URL:', url);
+    
+    const payload = {
+      duration: selectedDuration.value,
+      planCode: plan.planCode,
+      pricingMode: "default",
+      quantity: 1
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to add server to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Added ${plan.planCode} to cart successfully!`);
+    console.log('Server added to cart result:', result);
+    
+    // Notify parent to refresh cart details
+    emit('refresh-cart-details');
+    
+    // Close the details dialog if it's open
+    if (showServerDetailsDialog.value && selectedServer.value && selectedServer.value.planCode === plan.planCode) {
+      showServerDetailsDialog.value = false;
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('Error adding server to cart:', err);
+    showError(`Error adding server to cart: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    if (plan) {
+      plan.addingToCart = false;
+    }
+  }
+};
+
+// Function to add the currently selected server to cart (from details dialog)
+const addSelectedServerToCart = () => {
+  if (selectedServer.value) {
+    addServerToCart(selectedServer.value);
+  }
+};
+
+// Function to show server details
+const showServerDetails = (plan) => {
+  selectedServer.value = plan;
+  selectedDuration.value = 'P1M'; // Reset to default 1 month
+  showServerDetailsDialog.value = true;
+};
+
+// Function to add server by manually entered plan code
+const addServerByPlanCode = async () => {
+  if (!props['active-cart-id'] || !manualPlanCode.value) {
+    showError('Cannot add server to cart. Please select an active cart first and enter a plan code.');
+    return;
+  }
+  
+  addingManualPlan.value = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${props.apiToken}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${props['active-cart-id']}/eco`;
+    
+    console.log('Adding manual plan to cart:', manualPlanCode.value, 'URL:', url);
+    
+    const payload = {
+      duration: manualDuration.value,
+      planCode: manualPlanCode.value,
+      pricingMode: "default",
+      quantity: parseInt(manualQuantity.value, 10) || 1
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to add plan to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Added ${manualPlanCode.value} to cart successfully!`);
+    console.log('Manual plan added to cart result:', result);
+    
+    // Notify parent to refresh cart details
+    emit('refresh-cart-details');
+    
+    // Reset and close dialog
+    manualPlanCode.value = '';
+    manualDuration.value = 'P1M';
+    manualQuantity.value = 1;
+    showManualPlanCodeDialog.value = false;
+    
+    return result;
+  } catch (err) {
+    console.error('Error adding manual plan to cart:', err);
+    showError(`Error adding plan to cart: ${err.message}`);
+    return null;
+  } finally {
+    addingManualPlan.value = false;
+  }
+};
+
+// Watch for site changes to refresh servers
+watch(() => props['selected-site'], (newSite, oldSite) => {
+  if (newSite?.code !== oldSite?.code) {
+    console.log('Site changed, refreshing server catalog...');
+    fetchServers();
+  }
+}, { deep: true });
+
+// Fetch servers on component mount if we have a token
+onMounted(() => {
+  if (props['api-token']) {
+    fetchServers();
+  }
+});
+</script>
+
+<style scoped>
+.h-100 {
+  height: 100%;
+}
+</style>

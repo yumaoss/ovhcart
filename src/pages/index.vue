@@ -560,147 +560,20 @@
 
           <!-- Servers Tab -->
           <v-window-item value="servers">
-            <v-card-title class="text-h5 py-4 d-flex align-center">
-              Server Plans
-              <v-chip 
-                class="ml-2" 
-                color="primary" 
-                size="small"
-              >
-                Subsidiary: {{ selectedSite?.code || 'IE' }}
-              </v-chip>
-              <v-spacer></v-spacer>
-              <v-btn
-                color="primary"
-                variant="elevated"
-                prepend-icon="mdi-refresh"
-                @click="fetchServers"
-                :loading="loadingServers"
-                :disabled="!apiToken"
-              >
-                Refresh Servers
-              </v-btn>
-            </v-card-title>
-            <v-card-text>
-              <div v-if="loadingServers">
-                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                <span class="ml-2">Loading server catalog...</span>
-              </div>
-              
-              <v-alert
-                v-else-if="serverError"
-                type="error"
-                title="Error"
-                :text="serverError.message || 'Failed to load server catalog'"
-              ></v-alert>
-              
-              <v-alert
-                v-else-if="!serverCatalog || !serverCatalog.plans || serverCatalog.plans.length === 0"
-                type="info"
-                text="No server plans available"
-              ></v-alert>
-              
-              <div v-else>
-                <!-- Manual Plan Code Input Button - Moved to top -->
-                <v-card variant="outlined" class="mb-4 pa-4">
-                  <v-card-title class="text-subtitle-1">
-                    <v-icon icon="mdi-keyboard" color="primary" class="mr-2"></v-icon>
-                    Manually Add Server by Plan Code
-                  </v-card-title>
-                  <v-card-text>
-                    <p class="text-body-2 mb-4">
-                      If you know the exact OVH plan code for a server, you can manually add it to your cart.
-                    </p>
-                    <v-btn 
-                      color="primary" 
-                      variant="elevated" 
-                      prepend-icon="mdi-plus"
-                      @click="showManualPlanCodeDialog = true"
-                      :disabled="!activeCartId"
-                    >
-                      Enter Plan Code
-                    </v-btn>
-                  </v-card-text>
-                </v-card>
-                
-                <v-row>
-                  <v-col cols="12" md="4" v-for="(plan, index) in serverCatalog.plans" :key="index">
-                    <v-card class="h-100">
-                      <v-card-title class="text-h6">
-                        {{ plan.planCode || 'Server Plan' }}
-                      </v-card-title>
-                      <v-card-subtitle v-if="plan.description">
-                        {{ plan.description }}
-                      </v-card-subtitle>
-                      <v-card-text>
-                        <v-list density="compact">
-                          <v-list-item v-if="plan.family">
-                            <template v-slot:prepend>
-                              <v-icon icon="mdi-server" color="primary"></v-icon>
-                            </template>
-                            <v-list-item-title>Family</v-list-item-title>
-                            <v-list-item-subtitle>{{ plan.family }}</v-list-item-subtitle>
-                          </v-list-item>
-                          
-                          <v-list-item v-if="plan.productType">
-                            <template v-slot:prepend>
-                              <v-icon icon="mdi-tag" color="primary"></v-icon>
-                            </template>
-                            <v-list-item-title>Type</v-list-item-title>
-                            <v-list-item-subtitle>{{ plan.productType }}</v-list-item-subtitle>
-                          </v-list-item>
-                          
-                          <v-list-item v-if="getPlanPrice(plan)">
-                            <template v-slot:prepend>
-                              <v-icon icon="mdi-currency-eur" color="primary"></v-icon>
-                            </template>
-                            <v-list-item-title>Price</v-list-item-title>
-                            <v-list-item-subtitle>{{ getPlanPrice(plan) }}</v-list-item-subtitle>
-                          </v-list-item>
-                        </v-list>
-                        
-                        <v-chip-group v-if="plan.properties && plan.properties.length > 0" class="mt-3">
-                          <v-chip
-                            v-for="(prop, propIndex) in plan.properties"
-                            :key="propIndex"
-                            size="small"
-                            variant="outlined"
-                            :color="getPropertyColor(prop.name)"
-                          >
-                            {{ prop.name }}: {{ prop.value }}
-                          </v-chip>
-                        </v-chip-group>
-                      </v-card-text>
-                      <v-card-actions>
-                        <v-btn
-                          color="primary"
-                          variant="text"
-                          @click="addServerToCart(plan)"
-                          :loading="plan.addingToCart"
-                          :disabled="!activeCartId || !plan.planCode"
-                        >
-                          Add to Cart
-                        </v-btn>
-                        <v-btn
-                          color="primary"
-                          variant="text"
-                          @click="showServerDetails(plan)"
-                        >
-                          View Details
-                        </v-btn>
-                      </v-card-actions>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </div>
-            </v-card-text>
+            <servers
+              :api-token="apiToken"
+              :selected-site="selectedSite"
+              :active-cart-id="activeCartId"
+              @refresh-cart-details="fetchActiveCartDetails"
+              @show-success="showSuccess"
+              @show-error="showError"
+            />
           </v-window-item>
 
           <!-- User Profile Tab -->
           <v-window-item value="me">
             <me
               :api-token="apiToken"
-              :selected-site="selectedSite"
             />
           </v-window-item>
 
@@ -747,7 +620,7 @@
                           <v-img :src="getCountryFlag(item?.code)" alt="Country flag"></v-img>
                         </v-avatar>
                       </template>
-                      <v-list-item-title>{{ item?.name || 'Unknown site' }}</v-list-item-title>
+                      <v-list-item-title>{{ item?.name || '-' }}</v-list-item-title>
                       <v-list-item-subtitle>{{ item?.code || '' }}</v-list-item-subtitle>
                     </v-list-item>
                   </template>
@@ -1091,6 +964,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import Me from './Me.vue'
+import Servers from './Servers.vue'
 
 const tabs = [
   { id: 'cart', name: 'Shopping Cart', icon: 'mdi-cart' },
@@ -1249,7 +1123,7 @@ const configToDelete = ref({ itemId: null, configId: null, label: '' });
 // On mounted, load saved site from localStorage
 onMounted(() => {
   // Set default site first to avoid undefined errors
-  selectedSite.value = availableSites.find(site => site.code === 'EU')
+  selectedSite.value = availableSites.find(site => site.code === 'IE')
   
   const savedToken = localStorage.getItem('ovhApiToken')
   if (savedToken) {
