@@ -1081,7 +1081,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
 const tabs = [
   { id: 'cart', name: 'Shopping Cart', icon: 'mdi-cart' },
@@ -1095,7 +1095,7 @@ const apiToken = ref('')
 const loading = ref(false)
 const error = ref(null)
 const tokenSaving = ref(false)
-const showTokenSaved = ref(false)
+// const showTokenSaved = ref(false)
 
 // Active cart tracking
 const activeCartId = ref(null)
@@ -1115,7 +1115,6 @@ const newCart = ref({
   readOnly: false,
   expire: getDefaultExpireDate()
 })
-const createCartForm = ref(null)
 
 // Date picker related refs
 const showExpiryPicker = ref(false)
@@ -1126,11 +1125,7 @@ const expireTimePart = ref('')
 // Subsidiary options
 const subsidiaries = ['EU', 'CA', 'US', 'IE']
 
-// Format for form display
-const formattedExpireDate = computed(() => {
-  if (!newCart.value.expire) return ''
-  return new Date(newCart.value.expire).toLocaleString()
-})
+ 
 
 // Snackbar notifications
 const showSuccessSnackbar = ref(false)
@@ -1434,19 +1429,6 @@ function getDefaultExpireDate() {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-// Function to set expire date from date and time pickers
-function setExpireDateTime() {
-  if (!expireDatePart.value || !expireTimePart.value) return
-  
-  const [hour, minute] = expireTimePart.value.split(':')
-  const date = new Date(expireDatePart.value)
-  
-  date.setHours(parseInt(hour), parseInt(minute), 0)
-  newCart.value.expire = date.toISOString()
-  
-  showExpiryTimePicker.value = false
-  showExpiryPicker.value = false
-}
 
 // Function to show create cart dialog
 const createCart = () => {
