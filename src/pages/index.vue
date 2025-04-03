@@ -472,6 +472,16 @@
                     </v-btn>
                     <v-spacer></v-spacer>
                     <v-btn
+                      color="success"
+                      variant="elevated"
+                      prepend-icon="mdi-cash-register"
+                      @click="checkoutCart"
+                      :loading="checkingOut"
+                      :disabled="activeCartDetails.readOnly || !activeCartDetails.items || activeCartDetails.items.length === 0"
+                    >
+                      Checkout
+                    </v-btn>
+                    <v-btn
                       color="error"
                       variant="text"
                       prepend-icon="mdi-close-circle"
@@ -813,73 +823,127 @@
       max-width="600"
     >
       <v-card>
-        <v-card-title>Create New Cart</v-card-title>
+        <v-card-title class="text-h5">Create New Cart</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="submitCreateCart">
             <v-text-field
               v-model="newCart.description"
               label="Description"
+              hint="Enter a description for your new cart"
+              persistent-hint
+              :rules="[v => !!v || 'Description is required']"
               required
+              class="mb-4"
             ></v-text-field>
-            <v-text-field
+            
+            <v-select
               v-model="newCart.ovhSubsidiary"
               label="OVH Subsidiary"
+              :items="subsidiaries"
+              hint="Select OVH subsidiary"
+              persistent-hint
               required
-            ></v-text-field>
-            <v-checkbox
-              v-model="newCart.readOnly"
-              label="Read Only"
-            ></v-checkbox>
+              class="mb-4"
+            ></v-select>
+            
             <v-text-field
               v-model="newCart.expire"
               label="Expiration"
               type="datetime-local"
+              hint="Cart will expire at this date/time (format: yyyy-MM-ddThh:mm:ss)"
+              persistent-hint
               required
+              class="mb-4"
             ></v-text-field>
-            <v-btn
-              type="submit"
-              :loading="creatingCart"
-            >
-              Create Cart
-            </v-btn>
+            
+            <v-switch
+              v-model="newCart.readOnly"
+              label="Read Only"
+              hint="Make this cart read-only"
+              persistent-hint
+            ></v-switch>
           </v-form>
         </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="error"
+            variant="text"
+            @click="showCreateCartDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            @click="submitCreateCart"
+            :loading="creatingCart"
+          >
+            Create
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog
       v-model="showManualPlanCodeDialog"
-      max-width="600"
+      max-width="500px"
     >
       <v-card>
-        <v-card-title>Enter Plan Code</v-card-title>
+        <v-card-title class="text-h5">Add Server by Plan Code</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="addServerByPlanCode">
             <v-text-field
               v-model="manualPlanCode"
               label="Plan Code"
+              hint="Enter the exact OVH plan code"
+              persistent-hint
+              :rules="[v => !!v || 'Plan code is required']"
               required
+              class="mb-4"
             ></v-text-field>
-            <v-text-field
+            
+            <v-select
               v-model="manualDuration"
+              :items="durations"
+              item-title="text"
+              item-value="value"
               label="Duration"
-              type="datetime-local"
-              required
-            ></v-text-field>
+              hint="Select contract duration"
+              persistent-hint
+              class="mb-4"
+            ></v-select>
+            
             <v-text-field
               v-model="manualQuantity"
               label="Quantity"
               type="number"
+              min="1"
+              hint="Number of items to add"
+              persistent-hint
+              :rules="[v => !!v && v > 0 || 'Quantity must be at least 1']"
               required
             ></v-text-field>
-            <v-btn
-              type="submit"
-              :loading="addingManualPlan"
-            >
-              Add Server
-            </v-btn>
           </v-form>
         </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="error"
+            variant="text"
+            @click="showManualPlanCodeDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            :loading="addingManualPlan"
+            @click="addServerByPlanCode"
+          >
+            Add to Cart
+          </v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -943,6 +1007,76 @@
     >
       Settings saved successfully!
     </v-snackbar>
+
+    <!-- After all other dialogs, add the checkout dialog -->
+    <v-dialog
+      v-model="showCheckoutDialog"
+      max-width="500px"
+    >
+      <v-card>
+        <v-card-title>
+          <v-icon icon="mdi-check-circle" color="success" class="mr-2"></v-icon>
+          Checkout Successful
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-1 mb-4">
+            Your cart has been successfully checked out. Please use the link below to complete your payment.
+          </div>
+          
+          <v-alert
+            type="info"
+            variant="tonal"
+            icon="mdi-information"
+            class="mb-4"
+          >
+            After payment, your order will be processed and you will receive confirmation details.
+          </v-alert>
+          
+          <v-card variant="outlined" class="pa-3 mb-4">
+            <v-card-title class="text-subtitle-1 d-flex align-center">
+              <v-icon icon="mdi-link" color="primary" class="mr-2"></v-icon>
+              Payment URL
+            </v-card-title>
+            <v-card-text>
+              <div class="d-flex align-center">
+                <v-text-field
+                  v-model="checkoutUrl"
+                  readonly
+                  variant="outlined"
+                  class="flex-grow-1 mr-2"
+                  dense
+                ></v-text-field>
+                <v-btn
+                  icon="mdi-content-copy"
+                  size="small"
+                  @click="copyToClipboard(checkoutUrl)"
+                  title="Copy to clipboard"
+                ></v-btn>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            variant="text"
+            @click="showCheckoutDialog = false"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            prepend-icon="mdi-open-in-new"
+            :href="checkoutUrl"
+            target="_blank"
+          >
+            Open Payment Page
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -1284,11 +1418,20 @@ const removeFromCart = (item) => {
   console.log('Remove item from cart:', item)
 }
 
-// Function to get default expire date (current time + 7 days)
+// Function to get default expire date (current time + 7 days) in proper format for datetime-local input
 function getDefaultExpireDate() {
-  const date = new Date()
-  date.setDate(date.getDate() + 7)
-  return date.toISOString()
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  
+  // Format as yyyy-MM-ddThh:mm:ss (compatible with datetime-local input)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
 // Function to set expire date from date and time pickers
@@ -1311,37 +1454,29 @@ const createCart = () => {
     description: '',
     ovhSubsidiary: selectedSite.value ? selectedSite.value.code : 'IE',
     readOnly: false,
-    expire: getDefaultExpireDate()
+    expire: getDefaultExpireDate() // This now returns properly formatted date string
   }
-  
-  // Set date picker initial values based on default expire date
-  const defaultDate = new Date(newCart.value.expire)
-  expireDatePart.value = defaultDate.toISOString().split('T')[0]
-  
-  const hours = defaultDate.getHours().toString().padStart(2, '0')
-  const minutes = defaultDate.getMinutes().toString().padStart(2, '0')
-  expireTimePart.value = `${hours}:${minutes}`
   
   showCreateCartDialog.value = true
 }
 
 // Function to submit new cart creation
 const submitCreateCart = async () => {
-  if (!apiToken.value) return
+  if (!apiToken.value) return;
   
-  // Validate form
-  const isValid = await createCartForm.value?.validate()
-  if (!isValid?.valid) return
-  
-  creatingCart.value = true
+  creatingCart.value = true;
   
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
-    }
+    };
     
-    const apiEndpoint = getApiEndpoint()
+    // Convert the datetime-local input value to ISO 8601 format for the API
+    let expireDate = new Date(newCart.value.expire);
+    let expireISOString = expireDate.toISOString();
+    
+    const apiEndpoint = getApiEndpoint();
     const response = await fetch(`${apiEndpoint}/order/cart`, {
       method: 'POST',
       headers,
@@ -1349,31 +1484,32 @@ const submitCreateCart = async () => {
         ovhSubsidiary: newCart.value.ovhSubsidiary,
         description: newCart.value.description,
         readOnly: newCart.value.readOnly,
-        expire: newCart.value.expire
+        expire: expireISOString // Use ISO string format for the API
       })
-    })
+    });
     
     if (!response.ok) {
-      throw new Error(`Failed to create cart: ${response.status}`)
+      const errorData = await response.json();
+      throw new Error(`Failed to create cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
     
-    const result = await response.json()
+    const result = await response.json();
     
     // Store the cart ID in localStorage and set as active
-    localStorage.setItem('ovhActiveCartId', result.cartId)
-    activeCartId.value = result.cartId
-    activeCartDetails.value = result
+    localStorage.setItem('ovhActiveCartId', result.cartId);
+    activeCartId.value = result.cartId;
+    activeCartDetails.value = result;
     
-    showSuccess(`Cart created successfully! Cart ID: ${result.cartId}`)
-    showCreateCartDialog.value = false
+    showSuccess(`Cart created successfully! Cart ID: ${result.cartId}`);
+    showCreateCartDialog.value = false;
     
     // Refresh cart data to include the new cart
-    await fetchCart()
+    await fetchCart();
   } catch (err) {
-    console.error('Error creating cart:', err)
-    showError(`Error creating cart: ${err.message}`)
+    console.error('Error creating cart:', err);
+    showError(`Error creating cart: ${err.message}`);
   } finally {
-    creatingCart.value = false
+    creatingCart.value = false;
   }
 }
 
@@ -2297,5 +2433,109 @@ const addServerByPlanCode = async () => {
   } finally {
     addingManualPlan.value = false;
   }
+};
+
+// Add checkout refs
+const checkingOut = ref(false);
+const checkoutUrl = ref(null);
+const showCheckoutDialog = ref(false);
+
+// Add checkout function
+const checkoutCart = async () => {
+  if (!apiToken.value || !activeCartId.value) {
+    showError('Cannot checkout. No active cart selected.');
+    return;
+  }
+  
+  checkingOut.value = true;
+  checkoutUrl.value = null;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    
+    // Step 1: Attempt to assign the cart (but continue even if it fails)
+    console.log('Assigning cart before checkout:', activeCartId.value);
+    try {
+      const assignUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/assign`;
+      
+      const assignResponse = await fetch(assignUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({})
+      });
+      
+      if (!assignResponse.ok) {
+        const errorData = await assignResponse.json();
+        console.warn(`Cart assignment warning (continuing anyway): ${assignResponse.status} - ${errorData.message || JSON.stringify(errorData)}`);
+      } else {
+        console.log('Cart assignment successful');
+      }
+    } catch (assignError) {
+      // Log the assign error but continue with checkout
+      console.warn('Cart assignment failed (continuing anyway):', assignError.message);
+    }
+    
+    // Step 2: Checkout the cart
+    const checkoutUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/checkout`;
+    
+    const checkoutPayload = {
+      autoPayWithPreferredPaymentMethod: false,
+      waiveRetractationPeriod: false
+    };
+    
+    console.log('Checking out cart:', activeCartId.value, 'with payload:', checkoutPayload);
+    
+    const checkoutResponse = await fetch(checkoutUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(checkoutPayload)
+    });
+    
+    if (!checkoutResponse.ok) {
+      const errorData = await checkoutResponse.json();
+      throw new Error(`Failed to checkout cart: ${checkoutResponse.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const checkoutResult = await checkoutResponse.json();
+    console.log('Checkout successful:', checkoutResult);
+    
+    if (checkoutResult.url) {
+      checkoutUrl.value = checkoutResult.url;
+      showCheckoutDialog.value = true;
+      showSuccess('Checkout successful! Please use the payment link to complete your order.');
+    } else {
+      showError('Checkout completed but no payment URL was provided.');
+    }
+    
+    // Refresh cart list and details
+    await fetchCart();
+    
+    return checkoutResult;
+  } catch (err) {
+    console.error('Error during checkout process:', err);
+    showError(`Checkout error: ${err.message}`);
+    return null;
+  } finally {
+    checkingOut.value = false;
+  }
+};
+
+// Function to copy text to clipboard
+const copyToClipboard = (text) => {
+  if (!text) return;
+  
+  navigator.clipboard.writeText(text)
+    .then(() => {
+      showSuccess('URL copied to clipboard!');
+    })
+    .catch((err) => {
+      console.error('Could not copy text: ', err);
+      showError('Failed to copy URL');
+    });
 };
 </script>
