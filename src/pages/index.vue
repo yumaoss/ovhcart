@@ -50,7 +50,7 @@
                 text="No active cart selected. Please select one from below."
                 class="mb-4"
               ></v-alert>
-              
+
               <!-- Active Cart Section -->
               <div v-if="activeCartId && activeCartDetails" class="mb-6">
                 <v-card variant="outlined" class="mb-4">
@@ -105,7 +105,7 @@
                         </v-list-item>
                       </v-col>
                     </v-row>
-                    
+
                     <!-- Cart Items Section -->
                     <v-divider class="my-4"></v-divider>
                     <div v-if="activeCartDetails && activeCartDetails.items && activeCartDetails.items.length > 0">
@@ -125,18 +125,18 @@
                               </v-chip>
                             </div>
                           </v-card-title>
-                          
+
                           <v-card-text>
                             <div v-if="!cartItemDetails[itemId]" class="d-flex align-center">
                               <v-progress-circular indeterminate size="20" width="2" color="primary" class="mr-2"></v-progress-circular>
                               <span>Loading item details...</span>
                             </div>
-                            
+
                             <v-row v-else>
                               <v-col cols="12" sm="6">
                                 <v-card-title>{{ cartItemDetails[itemId]?.description || cartItemDetails[itemId]?.planCode }}</v-card-title>
                                 <v-card-subtitle v-if="cartItemDetails[itemId]?.description && cartItemDetails[itemId]?.planCode">{{ cartItemDetails[itemId]?.planCode }}</v-card-subtitle>
-                                
+
                                 <v-chip
                                   v-if="cartItemDetails[itemId]?.settings?.quantity"
                                   color="primary"
@@ -146,7 +146,7 @@
                                 >
                                   Quantity: {{ cartItemDetails[itemId]?.settings?.quantity }}
                                 </v-chip>
-                                
+
                                 <v-list density="compact" class="mt-2">
                                   <v-list-item>
                                     <template v-slot:prepend>
@@ -155,9 +155,16 @@
                                     <v-list-item-title>Product</v-list-item-title>
                                     <v-list-item-subtitle>{{ getProductName(cartItemDetails[itemId]?.productId) }}</v-list-item-subtitle>
                                   </v-list-item>
+                                  <v-list-item>
+                                    <template v-slot:prepend>
+                                      <v-icon icon="mdi-tag" color="primary"></v-icon>
+                                    </template>
+                                    <v-list-item-title>Plan Code</v-list-item-title>
+                                    <v-list-item-subtitle>{{ cartItemDetails[itemId]?.settings?.planCode }}</v-list-item-subtitle>
+                                  </v-list-item>
                                 </v-list>
                               </v-col>
-                              
+
                               <v-col cols="12" sm="6">
                                 <v-list density="compact">
                                   <v-list-item v-if="cartItemDetails[itemId]?.prices">
@@ -167,7 +174,7 @@
                                     <v-list-item-title>Price</v-list-item-title>
                                     <v-list-item-subtitle>{{ getItemPrice(cartItemDetails[itemId]) }}</v-list-item-subtitle>
                                   </v-list-item>
-                                  
+
                                   <v-list-item>
                                     <template v-slot:prepend>
                                       <v-icon icon="mdi-cog-outline" color="primary"></v-icon>
@@ -235,17 +242,17 @@
                                         </v-list-item>
                                       </template>
                                     </v-select>
-                                    
-                                    <p class="text-caption mt-1">Current datacenter: 
+
+                                    <p class="text-caption mt-1">Current datacenter:
                                       <v-chip size="x-small" color="info" v-if="getItemDatacenter(itemId)">
                                         {{ getItemDatacenter(itemId) }}
                                       </v-chip>
                                       <span v-else>Not configured</span>
                                     </p>
-                                    
-                                    <v-btn 
-                                      color="primary" 
-                                      variant="tonal" 
+
+                                    <v-btn
+                                      color="primary"
+                                      variant="tonal"
                                       size="small"
                                       class="mt-2"
                                       :loading="configuringDatacenter[itemId]"
@@ -287,17 +294,17 @@
                                         </v-list-item>
                                       </template>
                                     </v-select>
-                                    
-                                    <p class="text-caption mt-1">Current OS: 
+
+                                    <p class="text-caption mt-1">Current OS:
                                       <v-chip size="x-small" color="info" v-if="getItemOS(itemId)">
                                         {{ getItemOS(itemId) }}
                                       </v-chip>
                                       <span v-else>Not configured</span>
                                     </p>
-                                    
-                                    <v-btn 
-                                      color="primary" 
-                                      variant="tonal" 
+
+                                    <v-btn
+                                      color="primary"
+                                      variant="tonal"
                                       size="small"
                                       class="mt-2"
                                       :loading="configuringOS[itemId]"
@@ -378,7 +385,7 @@
                                         </tr>
                                       </tbody>
                                     </v-table>
-                                    
+
                                     <!-- Add new configuration section -->
                                     <div class="mt-4" v-if="!activeCartDetails.readOnly">
                                       <v-divider class="mb-2"></v-divider>
@@ -392,11 +399,11 @@
                                             class="mb-2"
                                             @update:model-value="handleConfigTypeChange"
                                           ></v-select>
-                                          
-                                          <v-alert 
-                                            v-if="configurationInfo[newConfig.label]" 
-                                            type="info" 
-                                            density="compact" 
+
+                                          <v-alert
+                                            v-if="configurationInfo[newConfig.label]"
+                                            type="info"
+                                            density="compact"
                                             variant="tonal"
                                             class="mb-2"
                                           >
@@ -416,7 +423,7 @@
                                             <v-text-field
                                               v-model="newConfig.value"
                                               label="Configuration Value"
-                                              density="compact" 
+                                              density="compact"
                                               class="mr-2"
                                               hide-details
                                             ></v-text-field>
@@ -438,7 +445,7 @@
                                 </v-card>
                               </v-col>
                             </v-row>
-                            
+
                             <!-- Action buttons -->
                             <v-card-actions v-if="cartItemDetails[itemId]">
                               <v-btn
@@ -493,7 +500,7 @@
                   </v-card-actions>
                 </v-card>
               </div>
-              
+
               <!-- Available Carts -->
               <h3 class="text-subtitle-1 font-weight-bold mb-2">Available Carts</h3>
               <v-alert
@@ -519,7 +526,7 @@
                     >
                       {{ item.readOnly ? 'Read Only' : 'Active' }}
                     </v-chip>
-                    <v-icon 
+                    <v-icon
                       v-if="activeCartId === item.cartId"
                       icon="mdi-check-circle"
                       color="primary"
@@ -592,7 +599,7 @@
                   :rules="[v => !!v || 'Token is required']"
                   class="mb-4"
                 ></v-text-field>
-                
+
                 <v-select
                   v-model="selectedSite"
                   label="OVH Subsidiary for Cart Creation"
@@ -612,7 +619,7 @@
                       {{ item?.raw?.name || 'Select site' }} {{ item?.raw?.code ? `(${item.raw.code})` : '' }}
                     </div>
                   </template>
-                  
+
                   <template v-slot:item="{ item, props }">
                     <v-list-item v-bind="props">
                       <template v-slot:prepend>
@@ -625,7 +632,7 @@
                     </v-list-item>
                   </template>
                 </v-select>
-                
+
                 <v-card variant="outlined" class="mb-4 pa-3">
                   <v-card-title class="text-subtitle-1">Current Settings</v-card-title>
                   <v-card-text>
@@ -634,7 +641,7 @@
                     <p class="text-caption">Note: The API endpoint is fixed to eu.api.ovh.com regardless of site selection</p>
                   </v-card-text>
                 </v-card>
-                
+
                 <!-- Theme Selection -->
                 <v-card variant="outlined" class="mb-4 pa-3">
                   <v-card-title class="text-subtitle-1">
@@ -683,7 +690,7 @@
                     </v-radio-group>
                   </v-card-text>
                 </v-card>
-                
+
                 <v-btn
                   color="primary"
                   type="submit"
@@ -716,7 +723,7 @@
               required
               class="mb-4"
             ></v-text-field>
-            
+
             <v-select
               v-model="newCart.ovhSubsidiary"
               label="OVH Subsidiary"
@@ -726,7 +733,7 @@
               required
               class="mb-4"
             ></v-select>
-            
+
             <v-text-field
               v-model="newCart.expire"
               label="Expiration"
@@ -736,7 +743,7 @@
               required
               class="mb-4"
             ></v-text-field>
-            
+
             <v-switch
               v-model="newCart.readOnly"
               label="Read Only"
@@ -783,7 +790,7 @@
               required
               class="mb-4"
             ></v-text-field>
-            
+
             <v-select
               v-model="manualDuration"
               :items="durations"
@@ -794,7 +801,7 @@
               persistent-hint
               class="mb-4"
             ></v-select>
-            
+
             <v-text-field
               v-model="manualQuantity"
               label="Quantity"
@@ -903,7 +910,7 @@
           <div class="text-body-1 mb-4">
             Your cart has been successfully checked out. Please use the link below to complete your payment.
           </div>
-          
+
           <v-alert
             type="info"
             variant="tonal"
@@ -912,7 +919,7 @@
           >
             After payment, your order will be processed and you will receive confirmation details.
           </v-alert>
-          
+
           <v-card variant="outlined" class="pa-3 mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <v-icon icon="mdi-link" color="primary" class="mr-2"></v-icon>
@@ -990,6 +997,24 @@ const loadingActiveCart = ref(false)
 const cartItemDetails = ref({});
 const deletingItems = ref({});
 
+// 用于跟踪项目详情加载状态
+const loadingItemDetails = ref(false);
+
+// 监听购物车ID变化，当ID变化时重置和获取购物车详情
+watch(activeCartId, (newCartId) => {
+  console.log('Active cart ID changed to:', newCartId);
+  // 清空之前的购物车项目详情
+  cartItemDetails.value = {};
+
+  if (newCartId) {
+    // 当有新的购物车ID时，获取详情
+    fetchActiveCartDetails();
+  } else {
+    // 当购物车ID被清空时，重置相关状态
+    activeCartDetails.value = null;
+  }
+});
+
 // Create cart related refs
 const showCreateCartDialog = ref(false)
 const creatingCart = ref(false)
@@ -1009,7 +1034,7 @@ const expireTimePart = ref('')
 // Subsidiary options
 const subsidiaries = ['EU', 'CA', 'US', 'IE']
 
- 
+
 
 // Snackbar notifications
 const showSuccessSnackbar = ref(false)
@@ -1124,18 +1149,18 @@ const configToDelete = ref({ itemId: null, configId: null, label: '' });
 onMounted(() => {
   // Set default site first to avoid undefined errors
   selectedSite.value = availableSites.find(site => site.code === 'IE')
-  
+
   const savedToken = localStorage.getItem('ovhApiToken')
   if (savedToken) {
     apiToken.value = savedToken
-    
+
     // Load active cart ID
     const savedCartId = localStorage.getItem('ovhActiveCartId')
     if (savedCartId) {
       activeCartId.value = savedCartId
       fetchActiveCartDetails()
     }
-    
+
     // Load saved site
     const savedSiteCode = localStorage.getItem('ovhSiteCode')
     if (savedSiteCode) {
@@ -1144,7 +1169,7 @@ onMounted(() => {
         selectedSite.value = foundSite
       }
     }
-    
+
     // Load saved theme
     const savedTheme = localStorage.getItem('ovhTheme')
     if (savedTheme) {
@@ -1154,7 +1179,7 @@ onMounted(() => {
       // Default to auto theme
       applyTheme('auto')
     }
-    
+
     fetchCart()
   }
 })
@@ -1182,7 +1207,7 @@ const showError = (message) => {
 const getCountryFlag = (siteCode) => {
   // Check if siteCode is defined
   if (!siteCode) return 'https://flagcdn.com/48x36/xx.png'; // Return a placeholder or default flag
-  
+
   // Convert site code to country code for flags
   const countryCode = siteCode === 'EU' ? 'eu' : siteCode.toLowerCase();
   return `https://flagcdn.com/48x36/${countryCode}.png`;
@@ -1215,20 +1240,20 @@ watch(selectedTheme, (newTheme) => {
 const saveSettings = async () => {
   try {
     tokenSaving.value = true
-    
+
     // Save token
     localStorage.setItem('ovhApiToken', apiToken.value)
-    
+
     // Save selected site
     if (selectedSite.value) {
       localStorage.setItem('ovhSiteCode', selectedSite.value.code)
     }
-    
+
     // Save selected theme
     localStorage.setItem('ovhTheme', selectedTheme.value)
-    
+
     showSettingsSaved.value = true
-    
+
     // Try to fetch cart data with the new settings
     await fetchCart()
   } catch (err) {
@@ -1242,43 +1267,43 @@ const saveSettings = async () => {
 // Function to fetch cart data
 const fetchCart = async () => {
   if (!apiToken.value) return
-  
+
   loading.value = true
   error.value = null
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     }
-    
+
     // First, get the cart list
     const apiEndpoint = getApiEndpoint()
     const cartListResponse = await fetch(`${apiEndpoint}/order/cart`, {
       headers
     })
-    
+
     if (!cartListResponse.ok) {
       throw new Error(`Failed to fetch cart list: ${cartListResponse.status}`)
     }
-    
+
     const cartIds = await cartListResponse.json()
-    
+
     // If there are carts, fetch details for each
     if (cartIds && cartIds.length) {
       const cartDetails = []
-      
+
       for (const cartId of cartIds) {
         const cartDetailResponse = await fetch(`${apiEndpoint}/order/cart/${cartId}`, {
           headers
         })
-        
+
         if (cartDetailResponse.ok) {
           const detail = await cartDetailResponse.json()
           cartDetails.push(detail)
         }
       }
-      
+
       cartItems.value = cartDetails
     } else {
       cartItems.value = []
@@ -1301,7 +1326,7 @@ const removeFromCart = (item) => {
 function getDefaultExpireDate() {
   const date = new Date();
   date.setDate(date.getDate() + 7);
-  
+
   // Format as yyyy-MM-ddThh:mm:ss (compatible with datetime-local input)
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1309,7 +1334,7 @@ function getDefaultExpireDate() {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
-  
+
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
@@ -1322,26 +1347,26 @@ const createCart = () => {
     readOnly: false,
     expire: getDefaultExpireDate() // This now returns properly formatted date string
   }
-  
+
   showCreateCartDialog.value = true
 }
 
 // Function to submit new cart creation
 const submitCreateCart = async () => {
   if (!apiToken.value) return;
-  
+
   creatingCart.value = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     // Convert the datetime-local input value to ISO 8601 format for the API
     let expireDate = new Date(newCart.value.expire);
     let expireISOString = expireDate.toISOString();
-    
+
     const apiEndpoint = getApiEndpoint();
     const response = await fetch(`${apiEndpoint}/order/cart`, {
       method: 'POST',
@@ -1353,22 +1378,22 @@ const submitCreateCart = async () => {
         expire: expireISOString // Use ISO string format for the API
       })
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to create cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
-    
+
     // Store the cart ID in localStorage and set as active
     localStorage.setItem('ovhActiveCartId', result.cartId);
     activeCartId.value = result.cartId;
     activeCartDetails.value = result;
-    
+
     showSuccess(`Cart created successfully! Cart ID: ${result.cartId}`);
     showCreateCartDialog.value = false;
-    
+
     // Refresh cart data to include the new cart
     await fetchCart();
   } catch (err) {
@@ -1398,28 +1423,28 @@ const clearActiveCart = () => {
 // Function to fetch active cart details
 const fetchActiveCartDetails = async () => {
   if (!apiToken.value || !activeCartId.value) return
-  
+
   loadingActiveCart.value = true
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     }
-    
+
     const apiEndpoint = getApiEndpoint()
     const response = await fetch(`${apiEndpoint}/order/cart/${activeCartId.value}`, {
       headers
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch cart details: ${response.status}`)
     }
-    
+
     const cartDetails = await response.json()
     activeCartDetails.value = cartDetails
     console.log('Active cart details:', cartDetails)
-    
+
     // Fetch details for each item
     if (cartDetails.items && cartDetails.items.length > 0) {
       fetchCartItemDetails(cartDetails.items);
@@ -1436,96 +1461,119 @@ const fetchActiveCartDetails = async () => {
 // Function to fetch item details
 const fetchCartItemDetails = async (itemIds) => {
   if (!apiToken.value || !activeCartId.value || !itemIds || itemIds.length === 0) return;
-  
-  const headers = {
-    'Authorization': `Bearer ${apiToken.value}`,
-    'Content-Type': 'application/json'
-  };
-  
-  const apiEndpoint = getApiEndpoint();
-  
-  // Fetch details for each item in parallel
-  const promises = itemIds.map(async (itemId) => {
-    try {
-      const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}`;
-      const response = await fetch(url, { headers });
-      
-      if (!response.ok) {
-        console.error(`Failed to fetch item ${itemId} details:`, response.status);
-        return;
-      }
-      
-      const itemDetails = await response.json();
-      cartItemDetails.value[itemId] = itemDetails;
-      console.log(`Item ${itemId} details:`, itemDetails);
-      
-      // Fetch configuration details if configurations array exists
-      if (itemDetails.configurations && Array.isArray(itemDetails.configurations) && itemDetails.configurations.length > 0) {
-        // Store the configuration IDs
-        const configIds = [...itemDetails.configurations];
-        // Initialize configurations array to store detailed config objects
-        cartItemDetails.value[itemId].configurationDetails = [];
-        
-        // Fetch each configuration detail
-        const configPromises = configIds.map(async (configId) => {
-          try {
-            const configUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
-            const configResponse = await fetch(configUrl, { headers });
-            
-            if (!configResponse.ok) {
-              console.error(`Failed to fetch configuration ${configId} details:`, configResponse.status);
-              return;
-            }
-            
-            const configDetails = await configResponse.json();
-            console.log(`Configuration ${configId} details:`, configDetails);
-            
-            // Add to the item's configuration details array
-            cartItemDetails.value[itemId].configurationDetails.push(configDetails);
-          } catch (err) {
-            console.error(`Error fetching configuration ${configId} details:`, err);
-          }
-        });
-        
-        await Promise.all(configPromises);
-      }
-    } catch (err) {
-      console.error(`Error fetching item ${itemId} details:`, err);
-    }
-  });
-  
-  await Promise.all(promises);
-}
 
-// Function to remove item from cart
-const removeItemFromCart = async (itemId) => {
-  if (!apiToken.value || !activeCartId.value) return;
-  
-  deletingItems.value[itemId] = true;
-  
+  loadingItemDetails.value = true;
+  console.log('Fetching details for cart items:', itemIds);
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
+    const apiEndpoint = getApiEndpoint();
+
+    // 初始化临时存储对象，确保Vue的响应式系统能够正确检测到所有变更
+    const tempDetails = {};
+
+    // Fetch details for each item in parallel
+    const promises = itemIds.map(async (itemId) => {
+      try {
+        console.log(`Fetching details for item ${itemId}...`);
+        const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}`;
+        const response = await fetch(url, { headers });
+
+        if (!response.ok) {
+          console.error(`Failed to fetch item ${itemId} details:`, response.status);
+          tempDetails[itemId] = { error: `Failed to load: ${response.status}` };
+          return;
+        }
+
+        const itemDetails = await response.json();
+        console.log(`Received item ${itemId} details:`, itemDetails);
+
+        // 存储到临时对象
+        tempDetails[itemId] = itemDetails;
+
+        // Fetch configuration details if configurations array exists
+        if (itemDetails.configurations && Array.isArray(itemDetails.configurations) && itemDetails.configurations.length > 0) {
+          // Store the configuration IDs
+          const configIds = [...itemDetails.configurations];
+          // Initialize configurations array to store detailed config objects
+          tempDetails[itemId].configurationDetails = [];
+
+          // Fetch each configuration detail
+          const configPromises = configIds.map(async (configId) => {
+            try {
+              const configUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
+              const configResponse = await fetch(configUrl, { headers });
+
+              if (!configResponse.ok) {
+                console.error(`Failed to fetch configuration ${configId} details:`, configResponse.status);
+                return;
+              }
+
+              const configDetails = await configResponse.json();
+              console.log(`Configuration ${configId} details:`, configDetails);
+
+              // Add to the item's configuration details array
+              tempDetails[itemId].configurationDetails.push(configDetails);
+            } catch (err) {
+              console.error(`Error fetching configuration ${configId} details:`, err);
+            }
+          });
+
+          await Promise.all(configPromises);
+        }
+      } catch (err) {
+        console.error(`Error fetching item ${itemId} details:`, err);
+        tempDetails[itemId] = { error: err.message };
+      }
+    });
+
+    // 等待所有Promise完成
+    await Promise.all(promises);
+
+    // 一次性将所有结果更新到响应式对象，确保Vue能正确响应变化
+    cartItemDetails.value = { ...tempDetails };
+    console.log('All cart item details loaded:', cartItemDetails.value);
+  } catch (err) {
+    console.error('Error in fetchCartItemDetails:', err);
+    showError(`Error loading cart items: ${err.message}`);
+  } finally {
+    loadingItemDetails.value = false;
+  }
+}
+
+// Function to remove item from cart
+const removeItemFromCart = async (itemId) => {
+  if (!apiToken.value || !activeCartId.value) return;
+
+  deletingItems.value[itemId] = true;
+
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}`;
-    
+
     const response = await fetch(url, {
       method: 'DELETE',
       headers
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to remove item: ${response.status}`);
     }
-    
+
     showSuccess('Item removed from cart successfully');
-    
+
     // Remove the item from cartItemDetails
     delete cartItemDetails.value[itemId];
-    
+
     // Refresh cart details
     await fetchActiveCartDetails();
   } catch (err) {
@@ -1539,23 +1587,23 @@ const removeItemFromCart = async (itemId) => {
 // Function to format duration string
 const formatDuration = (duration) => {
   if (!duration) return 'N/A';
-  
+
   // Convert ISO 8601 duration format to human-readable
   const regex = /P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/;
   const matches = duration.match(regex);
-  
+
   if (!matches) return duration;
-  
+
   const [, years, months, days, hours, minutes, seconds] = matches;
   const parts = [];
-  
+
   if (years) parts.push(`${years} Year${years > 1 ? 's' : ''}`);
   if (months) parts.push(`${months} Month${months > 1 ? 's' : ''}`);
   if (days) parts.push(`${days} Day${days > 1 ? 's' : ''}`);
   if (hours) parts.push(`${hours} Hour${hours > 1 ? 's' : ''}`);
   if (minutes) parts.push(`${minutes} Minute${minutes > 1 ? 's' : ''}`);
   if (seconds) parts.push(`${seconds} Second${seconds > 1 ? 's' : ''}`);
-  
+
   return parts.join(', ') || duration;
 };
 
@@ -1568,7 +1616,7 @@ const getItemStatusColor = (item) => {
     'delivered': 'success',
     'cancelled': 'error'
   };
-  
+
   return statusColors[item?.status?.toLowerCase()] || 'grey';
 };
 
@@ -1577,56 +1625,56 @@ const getItemPrice = (item) => {
   if (!item?.prices || item.prices.length === 0) {
     return 'Price not available';
   }
-  
+
   // Try to find the total price first
   const totalPrice = item.prices.find(p => p.label === 'TOTAL');
   if (totalPrice && totalPrice.price) {
     return totalPrice.price.text || `${totalPrice.price.value} ${totalPrice.price.currencyCode}`;
   }
-  
+
   // Fall back to the first price
   const firstPrice = item.prices[0];
   if (firstPrice && firstPrice.price) {
     return firstPrice.price.text || `${firstPrice.price.value} ${firstPrice.price.currencyCode}`;
   }
-  
+
   return 'Price not available';
 };
 
 // Function to fetch server catalog
 const fetchServers = async () => {
   if (!apiToken.value) return
-  
+
   loadingServers.value = true
   serverError.value = null
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     }
-    
+
     // Get the current subsidiary code from the selected site
     const subsidiaryCode = selectedSite.value ? selectedSite.value.code : 'IE'
-    
+
     const apiEndpoint = getApiEndpoint()
     const response = await fetch(`${apiEndpoint}/order/catalog/public/eco?ovhSubsidiary=${subsidiaryCode}`, {
       headers
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch server catalog: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Initialize addingToCart property for each plan
     if (data.plans && data.plans.length > 0) {
       data.plans.forEach(plan => {
         plan.addingToCart = false;
       });
     }
-    
+
     serverCatalog.value = data
     console.log('Server catalog for subsidiary', subsidiaryCode, ':', data)
   } catch (err) {
@@ -1651,12 +1699,12 @@ const getPlanPrice = (plan) => {
   if (!plan.pricings || plan.pricings.length === 0) {
     return 'Price not available'
   }
-  
+
   const pricing = plan.pricings[0]
   if (pricing.price) {
     return `${pricing.price.text || `${pricing.price.value} ${pricing.price.currencyCode}`}`
   }
-  
+
   return 'Price not available'
 }
 
@@ -1673,7 +1721,7 @@ const getPropertyColor = (propName) => {
     'region': 'red',
     'datacenter': 'red'
   }
-  
+
   const key = Object.keys(colorMap).find(key => propName.toLowerCase().includes(key))
   return key ? colorMap[key] : 'grey'
 }
@@ -1684,53 +1732,53 @@ const addServerToCart = async (plan) => {
     showError('Cannot add server to cart. Please select an active cart first.')
     return
   }
-  
+
   // Set loading state for this specific plan
   if (plan) {
     plan.addingToCart = true;
   }
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     }
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/eco`;
-    
+
     console.log('Adding server to cart:', plan.planCode, 'URL:', url);
-    
+
     const payload = {
       duration: selectedDuration.value, // Use selected duration
       planCode: plan.planCode,
       pricingMode: "default",
       quantity: 1
     };
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to add server to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     showSuccess(`Added ${plan.planCode} to cart successfully!`);
     console.log('Server added to cart result:', result);
-    
+
     // Refresh cart details
     await fetchActiveCartDetails();
-    
+
     // Close the details dialog if it's open
     if (showServerDetailsDialog.value && selectedServer.value && selectedServer.value.planCode === plan.planCode) {
       showServerDetailsDialog.value = false;
     }
-    
+
     return result;
   } catch (err) {
     console.error('Error adding server to cart:', err);
@@ -1761,7 +1809,7 @@ watch(activeTab, (newTab) => {
 // Function to get a readable product name from product ID
 const getProductName = (productId) => {
   if (!productId) return 'N/A';
-  
+
   const productMap = {
     'eco': 'Eco Server',
     'domain': 'Domain Name',
@@ -1770,7 +1818,7 @@ const getProductName = (productId) => {
     'cloud': 'Cloud Service',
     'hosting': 'Web Hosting'
   };
-  
+
   return productMap[productId] || productId;
 };
 
@@ -1782,7 +1830,7 @@ const getDatacenterIcon = (code) => {
     'gra': 'mdi-map-marker-radius',
     'fra': 'mdi-map-marker-radius'
   };
-  
+
   return iconMap[code] || 'mdi-map-marker';
 };
 
@@ -1791,11 +1839,11 @@ const getItemDatacenter = (itemId) => {
   if (!cartItemDetails.value[itemId] || !cartItemDetails.value[itemId].configurations) {
     return null;
   }
-  
+
   const datacenterConfig = cartItemDetails.value[itemId].configurations.find(
     config => config.label === 'dedicated_datacenter'
   );
-  
+
   return datacenterConfig ? datacenterConfig.value : null;
 };
 
@@ -1805,44 +1853,44 @@ const configureItemDatacenter = async (itemId, datacenterCode) => {
     showError('Cannot configure datacenter. Missing required information.');
     return;
   }
-  
+
   // Set loading state
   configuringDatacenter.value[itemId] = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
-    
+
     const payload = {
       label: "dedicated_datacenter",
       value: datacenterCode
     };
-    
+
     console.log(`Configuring datacenter for item ${itemId} to ${datacenterCode}:`, payload);
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to configure datacenter: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     showSuccess(`Datacenter configured to ${datacenterCode} successfully!`);
     console.log('Datacenter configuration result:', result);
-    
+
     // Refresh cart item details
     await fetchActiveCartDetails();
-    
+
     return result;
   } catch (err) {
     console.error('Error configuring datacenter:', err);
@@ -1871,21 +1919,21 @@ const updateItemConfiguration = async (itemId, label, value, configId = null) =>
     showError('Cannot update configuration. Missing required information.');
     return;
   }
-  
+
   // Set loading state
   editingConfiguration.value[itemId] = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     let url;
     let method;
-    
-    // If configId is provided, update existing configuration 
+
+    // If configId is provided, update existing configuration
     if (configId) {
       url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
       method = 'PUT';
@@ -1894,40 +1942,40 @@ const updateItemConfiguration = async (itemId, label, value, configId = null) =>
       url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
       method = 'POST';
     }
-    
+
     const payload = {
       label: label,
       value: value
     };
-    
+
     console.log(`${configId ? 'Updating' : 'Adding'} configuration for item ${itemId}:`, payload);
-    
+
     const response = await fetch(url, {
       method: method,
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to ${configId ? 'update' : 'add'} configuration: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     showSuccess(`Configuration ${label} ${configId ? 'updated' : 'added'} successfully!`);
     console.log('Configuration update result:', result);
-    
+
     // Refresh cart item details
     await fetchActiveCartDetails();
-    
+
     // Reset the new config form
     if (label === newConfig.value.label) {
       newConfig.value = { label: '', value: '' };
     }
-    
+
     // Close dialog if it was from the dialog
     configEditorDialog.value = false;
-    
+
     return result;
   } catch (err) {
     console.error(`Error ${configId ? 'updating' : 'adding'} configuration:`, err);
@@ -1945,9 +1993,9 @@ const addItemConfiguration = async (itemId, label, value) => {
     showError('Configuration name and value are required');
     return;
   }
-  
+
   addingConfiguration.value[itemId] = true;
-  
+
   try {
     await updateItemConfiguration(itemId, label, value);
     return true;
@@ -1967,10 +2015,10 @@ const handleConfigTypeChange = (label) => {
   if (label === 'custom_configuration') {
     newConfig.value.label = '';
   }
-  
+
   // Clear the value field when changing configuration type
   newConfig.value.value = '';
-  
+
   // If selecting datacenter config, set default available values
   if (label === 'dedicated_datacenter') {
     // Auto-select the first datacenter in the dropdown
@@ -1986,26 +2034,26 @@ const fetchItemAvailableConfigurations = async (itemId) => {
     showError('Cannot fetch configurations. Missing required information.');
     return;
   }
-  
+
   // Set loading state
   loadingAvailableConfigurations.value[itemId] = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configurations`;
-    
+
     console.log(`Fetching available configurations for item ${itemId}`);
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers
     });
-    
+
     if (!response.ok) {
       if (response.status === 404) {
         // No available configurations endpoint
@@ -2013,33 +2061,33 @@ const fetchItemAvailableConfigurations = async (itemId) => {
         itemAvailableConfigurations.value[itemId] = [];
         return [];
       }
-      
+
       const errorData = await response.json();
       throw new Error(`Failed to fetch configurations: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     console.log('Available configurations:', result);
-    
+
     // Store the available configurations
     itemAvailableConfigurations.value[itemId] = result;
-    
+
     // If there are available configurations, update the common configurations list
     if (result && result.length > 0) {
       // Extract configuration labels and add them to commonConfigurations if not already present
       const configLabels = result.map(config => config.name || config.label);
-      
+
       configLabels.forEach(label => {
         if (!commonConfigurations.includes(label)) {
           commonConfigurations.push(label);
         }
       });
-      
+
       showSuccess(`Found ${result.length} available configuration options`);
     } else {
       showInfo('No additional configuration options available');
     }
-    
+
     return result;
   } catch (err) {
     console.error('Error fetching configurations:', err);
@@ -2059,15 +2107,15 @@ const showInfo = (message) => {
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = `<style>.v-snackbar.info-snackbar .v-snackbar__wrapper { background-color: #2196F3 !important; }</style>`;
   document.body.appendChild(tempDiv);
-  
+
   // Add the info class to the snackbar
   const snackbar = document.querySelector('.v-snackbar');
   if (snackbar) {
     snackbar.classList.add('info-snackbar');
   }
-  
+
   showSuccessSnackbar.value = true;
-  
+
   // Remove the style after the snackbar is closed
   setTimeout(() => {
     document.body.removeChild(tempDiv);
@@ -2083,39 +2131,39 @@ const deleteItemConfiguration = async (itemId, configId) => {
     showError('Cannot delete configuration. Missing required information.');
     return;
   }
-  
+
   // Set loading state for the specific config
   if (!deleteConfigLoading.value[itemId]) {
     deleteConfigLoading.value[itemId] = {};
   }
   deleteConfigLoading.value[itemId][configId] = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
-    
+
     console.log(`Deleting configuration ${configId} for item ${itemId}`);
-    
+
     const response = await fetch(url, {
       method: 'DELETE',
       headers
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to delete configuration: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     showSuccess('Configuration deleted successfully!');
-    
+
     // Refresh cart item details
     await fetchActiveCartDetails();
-    
+
     return true;
   } catch (err) {
     console.error('Error deleting configuration:', err);
@@ -2155,14 +2203,14 @@ const getOSIcon = (code) => {
     'centos': 'mdi-linux',
     'debian': 'mdi-debian'
   };
-  
+
   // Check if code contains any of the keys
   for (const key in iconMap) {
     if (code.includes(key)) {
       return iconMap[key];
     }
   }
-  
+
   return 'mdi-server-network';
 };
 
@@ -2171,11 +2219,11 @@ const getItemOS = (itemId) => {
   if (!cartItemDetails.value[itemId] || !cartItemDetails.value[itemId].configurationDetails) {
     return null;
   }
-  
+
   const osConfig = cartItemDetails.value[itemId].configurationDetails.find(
     config => config.label === 'dedicated_os'
   );
-  
+
   return osConfig ? osConfig.value : null;
 };
 
@@ -2185,44 +2233,44 @@ const configureItemOS = async (itemId, osCode) => {
     showError('Cannot configure OS. Missing required information.');
     return;
   }
-  
+
   // Set loading state
   configuringOS.value[itemId] = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
-    
+
     const payload = {
       label: "dedicated_os",
       value: osCode
     };
-    
+
     console.log(`Configuring OS for item ${itemId} to ${osCode}:`, payload);
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to configure OS: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     showSuccess(`OS configured to ${osCode} successfully!`);
     console.log('OS configuration result:', result);
-    
+
     // Refresh cart item details
     await fetchActiveCartDetails();
-    
+
     return result;
   } catch (err) {
     console.error('Error configuring OS:', err);
@@ -2247,50 +2295,50 @@ const addServerByPlanCode = async () => {
     showError('Please enter a valid plan code, duration and quantity.');
     return;
   }
-  
+
   addingManualPlan.value = true;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
     const url = `${apiEndpoint}/order/cart/${activeCartId.value}/eco`;
-    
+
     console.log('Adding server to cart by manual plan code:', manualPlanCode.value, 'URL:', url);
-    
+
     const payload = {
       duration: manualDuration.value,
       planCode: manualPlanCode.value,
       pricingMode: "default",
       quantity: parseInt(manualQuantity.value)
     };
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload)
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(`Failed to add server to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const result = await response.json();
     showSuccess(`Added ${manualPlanCode.value} to cart successfully!`);
     console.log('Manual server added to cart result:', result);
-    
+
     // Reset form
     manualPlanCode.value = '';
     manualQuantity.value = 1;
     showManualPlanCodeDialog.value = false;
-    
+
     // Refresh cart details
     await fetchActiveCartDetails();
-    
+
     return result;
   } catch (err) {
     console.error('Error adding server to cart:', err);
@@ -2312,29 +2360,29 @@ const checkoutCart = async () => {
     showError('Cannot checkout. No active cart selected.');
     return;
   }
-  
+
   checkingOut.value = true;
   checkoutUrl.value = null;
-  
+
   try {
     const headers = {
       'Authorization': `Bearer ${apiToken.value}`,
       'Content-Type': 'application/json'
     };
-    
+
     const apiEndpoint = getApiEndpoint();
-    
+
     // Step 1: Attempt to assign the cart (but continue even if it fails)
     console.log('Assigning cart before checkout:', activeCartId.value);
     try {
       const assignUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/assign`;
-      
+
       const assignResponse = await fetch(assignUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify({})
       });
-      
+
       if (!assignResponse.ok) {
         const errorData = await assignResponse.json();
         console.warn(`Cart assignment warning (continuing anyway): ${assignResponse.status} - ${errorData.message || JSON.stringify(errorData)}`);
@@ -2345,31 +2393,31 @@ const checkoutCart = async () => {
       // Log the assign error but continue with checkout
       console.warn('Cart assignment failed (continuing anyway):', assignError.message);
     }
-    
+
     // Step 2: Checkout the cart
     const checkoutUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/checkout`;
-    
+
     const checkoutPayload = {
       autoPayWithPreferredPaymentMethod: false,
       waiveRetractationPeriod: false
     };
-    
+
     console.log('Checking out cart:', activeCartId.value, 'with payload:', checkoutPayload);
-    
+
     const checkoutResponse = await fetch(checkoutUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(checkoutPayload)
     });
-    
+
     if (!checkoutResponse.ok) {
       const errorData = await checkoutResponse.json();
       throw new Error(`Failed to checkout cart: ${checkoutResponse.status} - ${errorData.message || JSON.stringify(errorData)}`);
     }
-    
+
     const checkoutResult = await checkoutResponse.json();
     console.log('Checkout successful:', checkoutResult);
-    
+
     if (checkoutResult.url) {
       checkoutUrl.value = checkoutResult.url;
       showCheckoutDialog.value = true;
@@ -2377,10 +2425,10 @@ const checkoutCart = async () => {
     } else {
       showError('Checkout completed but no payment URL was provided.');
     }
-    
+
     // Refresh cart list and details
     await fetchCart();
-    
+
     return checkoutResult;
   } catch (err) {
     console.error('Error during checkout process:', err);
@@ -2394,7 +2442,7 @@ const checkoutCart = async () => {
 // Function to copy text to clipboard
 const copyToClipboard = (text) => {
   if (!text) return;
-  
+
   navigator.clipboard.writeText(text)
     .then(() => {
       showSuccess('URL copied to clipboard!');
