@@ -211,12 +211,117 @@
 
           <!-- Servers Tab -->
           <v-window-item value="servers">
-            <v-card-title class="text-h5 py-4">Server Plans</v-card-title>
+            <v-card-title class="text-h5 py-4 d-flex align-center">
+              Server Plans
+              <v-chip 
+                class="ml-2" 
+                color="primary" 
+                size="small"
+              >
+                Subsidiary: {{ selectedSite?.code || 'IE' }}
+              </v-chip>
+              <v-spacer></v-spacer>
+              <v-btn
+                color="primary"
+                variant="elevated"
+                prepend-icon="mdi-refresh"
+                @click="fetchServers"
+                :loading="loadingServers"
+                :disabled="!apiToken"
+              >
+                Refresh Servers
+              </v-btn>
+            </v-card-title>
             <v-card-text>
+              <div v-if="loadingServers">
+                <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                <span class="ml-2">Loading server catalog...</span>
+              </div>
+              
               <v-alert
+                v-else-if="serverError"
+                type="error"
+                title="Error"
+                :text="serverError.message || 'Failed to load server catalog'"
+              ></v-alert>
+              
+              <v-alert
+                v-else-if="!serverCatalog || !serverCatalog.plans || serverCatalog.plans.length === 0"
                 type="info"
                 text="No server plans available"
               ></v-alert>
+              
+              <div v-else>
+                <v-row>
+                  <v-col cols="12" md="4" v-for="(plan, index) in serverCatalog.plans" :key="index">
+                    <v-card class="h-100">
+                      <v-card-title class="text-h6">
+                        {{ plan.planCode || 'Server Plan' }}
+                      </v-card-title>
+                      <v-card-subtitle v-if="plan.description">
+                        {{ plan.description }}
+                      </v-card-subtitle>
+                      <v-card-text>
+                        <v-list density="compact">
+                          <v-list-item v-if="plan.family">
+                            <template v-slot:prepend>
+                              <v-icon icon="mdi-server" color="primary"></v-icon>
+                            </template>
+                            <v-list-item-title>Family</v-list-item-title>
+                            <v-list-item-subtitle>{{ plan.family }}</v-list-item-subtitle>
+                          </v-list-item>
+                          
+                          <v-list-item v-if="plan.productType">
+                            <template v-slot:prepend>
+                              <v-icon icon="mdi-tag" color="primary"></v-icon>
+                            </template>
+                            <v-list-item-title>Type</v-list-item-title>
+                            <v-list-item-subtitle>{{ plan.productType }}</v-list-item-subtitle>
+                          </v-list-item>
+                          
+                          <v-list-item v-if="getPlanPrice(plan)">
+                            <template v-slot:prepend>
+                              <v-icon icon="mdi-currency-eur" color="primary"></v-icon>
+                            </template>
+                            <v-list-item-title>Price</v-list-item-title>
+                            <v-list-item-subtitle>{{ getPlanPrice(plan) }}</v-list-item-subtitle>
+                          </v-list-item>
+                        </v-list>
+                        
+                        <v-chip-group v-if="plan.properties && plan.properties.length > 0" class="mt-3">
+                          <v-chip
+                            v-for="(prop, propIndex) in plan.properties"
+                            :key="propIndex"
+                            size="small"
+                            variant="outlined"
+                            :color="getPropertyColor(prop.name)"
+                          >
+                            {{ prop.name }}: {{ prop.value }}
+                          </v-chip>
+                        </v-chip-group>
+                      </v-card-text>
+                      <v-card-actions>
+                        <v-btn
+                          color="primary"
+                          variant="text"
+                          @click="addServerToCart(plan)"
+                          :loading="plan.addingToCart"
+                          :disabled="!activeCartId || !plan.planCode"
+                        >
+                          Add to Cart
+                        </v-btn>
+                        <v-btn
+                          color="primary"
+                          variant="text"
+                          @click="showServerDetails(plan)"
+                        >
+                          View Details
+                        </v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </div>
             </v-card-text>
           </v-window-item>
 
@@ -224,7 +329,7 @@
           <v-window-item value="settings">
             <v-card-title class="text-h5 py-4">Settings</v-card-title>
             <v-card-text>
-              <v-form @submit.prevent="saveToken">
+              <v-form @submit.prevent="saveSettings">
                 <v-text-field
                   v-model="apiToken"
                   label="OVH API Token"
@@ -233,21 +338,64 @@
                   placeholder="Enter your OVH API token"
                   persistent-hint
                   :rules="[v => !!v || 'Token is required']"
+                  class="mb-4"
                 ></v-text-field>
+                
+                <v-select
+                  v-model="selectedSite"
+                  label="OVH Subsidiary for Cart Creation"
+                  :items="availableSites"
+                  hint="Select your OVH region for cart creation (ovhSubsidiary)"
+                  persistent-hint
+                  item-title="name"
+                  item-value="code"
+                  return-object
+                  class="mb-4"
+                >
+                  <template v-slot:selection="{ item }">
+                    <div class="d-flex align-center">
+                      <v-avatar size="24" class="me-2">
+                        <v-img :src="getCountryFlag(item?.raw?.code)" alt="Country flag"></v-img>
+                      </v-avatar>
+                      {{ item?.raw?.name || 'Select site' }} {{ item?.raw?.code ? `(${item.raw.code})` : '' }}
+                    </div>
+                  </template>
+                  
+                  <template v-slot:item="{ item, props }">
+                    <v-list-item v-bind="props">
+                      <template v-slot:prepend>
+                        <v-avatar size="24">
+                          <v-img :src="getCountryFlag(item?.code)" alt="Country flag"></v-img>
+                        </v-avatar>
+                      </template>
+                      <v-list-item-title>{{ item?.name || 'Unknown site' }}</v-list-item-title>
+                      <v-list-item-subtitle>{{ item?.code || '' }}</v-list-item-subtitle>
+                    </v-list-item>
+                  </template>
+                </v-select>
+                
+                <v-card variant="outlined" class="mb-4 pa-3">
+                  <v-card-title class="text-subtitle-1">Current Settings</v-card-title>
+                  <v-card-text>
+                    <p><strong>API Endpoint:</strong> https://eu.api.ovh.com/v1 (Fixed)</p>
+                    <p><strong>Selected Site:</strong> {{ selectedSite?.code || 'Not selected' }} - {{ selectedSite?.name || 'Not selected' }}</p>
+                    <p class="text-caption">Note: The API endpoint is fixed to eu.api.ovh.com regardless of site selection</p>
+                  </v-card-text>
+                </v-card>
+                
                 <v-btn
                   color="primary"
                   type="submit"
-                  class="mt-4"
                   :loading="tokenSaving"
                 >
-                  Save Token
+                  Save Settings
                 </v-btn>
                 <v-snackbar
-                  v-model="showTokenSaved"
+                  v-model="showSettingsSaved"
                   timeout="2000"
                   color="success"
                 >
-                  Token saved successfully
+                  Settings saved successfully
                 </v-snackbar>
               </v-form>
             </v-card-text>
@@ -355,11 +503,118 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Server Details Dialog -->
+    <v-dialog v-model="showServerDetailsDialog" max-width="800px">
+      <v-card v-if="selectedServer">
+        <v-card-title class="text-h5">
+          {{ selectedServer.planCode || 'Server Details' }}
+          <v-spacer></v-spacer>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            @click="showServerDetailsDialog = false"
+          ></v-btn>
+        </v-card-title>
+        
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-list>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-server" color="primary"></v-icon>
+                  </template>
+                  <v-list-item-title>Plan Code</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedServer.planCode }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item v-if="selectedServer.description">
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-information-outline" color="primary"></v-icon>
+                  </template>
+                  <v-list-item-title>Description</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedServer.description }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item v-if="selectedServer.family">
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-server-network" color="primary"></v-icon>
+                  </template>
+                  <v-list-item-title>Family</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedServer.family }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item v-if="selectedServer.productType">
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-tag" color="primary"></v-icon>
+                  </template>
+                  <v-list-item-title>Product Type</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedServer.productType }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item v-if="getPlanPrice(selectedServer)">
+                  <template v-slot:prepend>
+                    <v-icon icon="mdi-currency-eur" color="primary"></v-icon>
+                  </template>
+                  <v-list-item-title>Price</v-list-item-title>
+                  <v-list-item-subtitle>{{ getPlanPrice(selectedServer) }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-col>
+            
+            <v-col cols="12" md="6" v-if="selectedServer.properties && selectedServer.properties.length > 0">
+              <v-card variant="outlined">
+                <v-card-title class="text-subtitle-1">
+                  Technical Specifications
+                </v-card-title>
+                <v-card-text>
+                  <v-list density="compact">
+                    <v-list-item v-for="(prop, propIndex) in selectedServer.properties" :key="propIndex">
+                      <v-list-item-title>{{ prop.name }}</v-list-item-title>
+                      <v-list-item-subtitle>{{ prop.value }}</v-list-item-subtitle>
+                    </v-list-item>
+                  </v-list>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-divider class="my-4"></v-divider>
+          <v-card-text>
+            <v-select
+              v-model="selectedDuration"
+              :items="durations"
+              item-title="text"
+              item-value="value"
+              label="Duration"
+              hint="Select contract duration"
+              persistent-hint
+              variant="outlined"
+              density="comfortable"
+              class="mb-4"
+            ></v-select>
+          </v-card-text>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            @click="addServerToCart(selectedServer)"
+            :loading="selectedServer.addingToCart"
+            :disabled="!activeCartId || !selectedServer.planCode"
+          >
+            Add to Cart
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 
 const tabs = [
   { id: 'cart', name: 'Shopping Cart', icon: 'mdi-cart' },
@@ -412,8 +667,50 @@ const showErrorSnackbar = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
 
-// Load saved token and cart ID from localStorage
+// Server catalog data
+const serverCatalog = ref(null)
+const loadingServers = ref(false)
+const serverError = ref(null)
+const selectedServer = ref(null)
+const showServerDetailsDialog = ref(false)
+
+// Site selection
+const availableSites = [
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'EU', name: 'Europe' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'IE', name: 'Internationnal' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'MA', name: 'Morocco' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'SN', name: 'Senegal' },
+  { code: 'TN', name: 'Tunisia' }
+]
+
+const selectedSite = ref(null)
+const showSettingsSaved = ref(false)
+
+// In the script section, add these variables
+const selectedDuration = ref('P1M'); // Default to 1 month
+const durations = [
+  { value: 'P1M', text: '1 Month' },
+  { value: 'P3M', text: '3 Months' },
+  { value: 'P6M', text: '6 Months' },
+  { value: 'P12M', text: '12 Months' }
+];
+
+// On mounted, load saved site from localStorage
 onMounted(() => {
+  // Set default site first to avoid undefined errors
+  selectedSite.value = availableSites.find(site => site.code === 'EU')
+  
   const savedToken = localStorage.getItem('ovhApiToken')
   if (savedToken) {
     apiToken.value = savedToken
@@ -425,23 +722,18 @@ onMounted(() => {
       fetchActiveCartDetails()
     }
     
+    // Load saved site
+    const savedSiteCode = localStorage.getItem('ovhSiteCode')
+    if (savedSiteCode) {
+      const foundSite = availableSites.find(site => site.code === savedSiteCode)
+      if (foundSite) {
+        selectedSite.value = foundSite
+      }
+    }
+    
     fetchCart()
   }
 })
-
-const saveToken = async () => {
-  try {
-    tokenSaving.value = true
-    localStorage.setItem('ovhApiToken', apiToken.value)
-    showTokenSaved.value = true
-    // Try to fetch cart data with the new token
-    await fetchCart()
-  } catch (err) {
-    console.error('Error saving token:', err)
-  } finally {
-    tokenSaving.value = false
-  }
-}
 
 // Function to format date
 const formatDate = (dateString) => {
@@ -462,6 +754,47 @@ const showError = (message) => {
   showErrorSnackbar.value = true
 }
 
+// Function to get country flag for site code
+const getCountryFlag = (siteCode) => {
+  // Check if siteCode is defined
+  if (!siteCode) return 'https://flagcdn.com/48x36/xx.png'; // Return a placeholder or default flag
+  
+  // Convert site code to country code for flags
+  const countryCode = siteCode === 'EU' ? 'eu' : siteCode.toLowerCase();
+  return `https://flagcdn.com/48x36/${countryCode}.png`;
+}
+
+// Function to get API endpoint based on selected site
+const getApiEndpoint = () => {
+  // Always use eu.api.ovh.com regardless of site selection
+  return 'https://eu.api.ovh.com/v1';
+}
+
+// Function to save settings
+const saveSettings = async () => {
+  try {
+    tokenSaving.value = true
+    
+    // Save token
+    localStorage.setItem('ovhApiToken', apiToken.value)
+    
+    // Save selected site
+    if (selectedSite.value) {
+      localStorage.setItem('ovhSiteCode', selectedSite.value.code)
+    }
+    
+    showSettingsSaved.value = true
+    
+    // Try to fetch cart data with the new settings
+    await fetchCart()
+  } catch (err) {
+    console.error('Error saving settings:', err)
+    showError(`Error saving settings: ${err.message}`)
+  } finally {
+    tokenSaving.value = false
+  }
+}
+
 // Function to fetch cart data
 const fetchCart = async () => {
   if (!apiToken.value) return
@@ -476,7 +809,8 @@ const fetchCart = async () => {
     }
     
     // First, get the cart list
-    const cartListResponse = await fetch('https://eu.api.ovh.com/v1/order/cart', {
+    const apiEndpoint = getApiEndpoint()
+    const cartListResponse = await fetch(`${apiEndpoint}/order/cart`, {
       headers
     })
     
@@ -491,7 +825,7 @@ const fetchCart = async () => {
       const cartDetails = []
       
       for (const cartId of cartIds) {
-        const cartDetailResponse = await fetch(`https://eu.api.ovh.com/v1/order/cart/${cartId}`, {
+        const cartDetailResponse = await fetch(`${apiEndpoint}/order/cart/${cartId}`, {
           headers
         })
         
@@ -544,7 +878,7 @@ function setExpireDateTime() {
 const createCart = () => {
   newCart.value = {
     description: '',
-    ovhSubsidiary: 'IE',
+    ovhSubsidiary: selectedSite.value ? selectedSite.value.code : 'IE',
     readOnly: false,
     expire: getDefaultExpireDate()
   }
@@ -576,7 +910,8 @@ const submitCreateCart = async () => {
       'Content-Type': 'application/json'
     }
     
-    const response = await fetch('https://eu.api.ovh.com/v1/order/cart', {
+    const apiEndpoint = getApiEndpoint()
+    const response = await fetch(`${apiEndpoint}/order/cart`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -639,7 +974,8 @@ const fetchActiveCartDetails = async () => {
       'Content-Type': 'application/json'
     }
     
-    const response = await fetch(`https://eu.api.ovh.com/v1/order/cart/${activeCartId.value}`, {
+    const apiEndpoint = getApiEndpoint()
+    const response = await fetch(`${apiEndpoint}/order/cart/${activeCartId.value}`, {
       headers
     })
     
@@ -658,4 +994,169 @@ const fetchActiveCartDetails = async () => {
     loadingActiveCart.value = false
   }
 }
+
+// Function to fetch server catalog
+const fetchServers = async () => {
+  if (!apiToken.value) return
+  
+  loadingServers.value = true
+  serverError.value = null
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    }
+    
+    // Get the current subsidiary code from the selected site
+    const subsidiaryCode = selectedSite.value ? selectedSite.value.code : 'IE'
+    
+    const apiEndpoint = getApiEndpoint()
+    const response = await fetch(`${apiEndpoint}/order/catalog/public/eco?ovhSubsidiary=${subsidiaryCode}`, {
+      headers
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch server catalog: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    // Initialize addingToCart property for each plan
+    if (data.plans && data.plans.length > 0) {
+      data.plans.forEach(plan => {
+        plan.addingToCart = false;
+      });
+    }
+    
+    serverCatalog.value = data
+    console.log('Server catalog for subsidiary', subsidiaryCode, ':', data)
+  } catch (err) {
+    console.error('Error fetching server catalog:', err)
+    serverError.value = err
+    showError(`Error fetching server catalog: ${err.message}`)
+  } finally {
+    loadingServers.value = false
+  }
+}
+
+// Watch for site changes to refresh servers if on servers tab
+watch(selectedSite, (newSite, oldSite) => {
+  if (newSite?.code !== oldSite?.code && activeTab.value === 'servers') {
+    console.log('Site changed, refreshing server catalog...');
+    fetchServers();
+  }
+});
+
+// Function to get plan price
+const getPlanPrice = (plan) => {
+  if (!plan.pricings || plan.pricings.length === 0) {
+    return 'Price not available'
+  }
+  
+  const pricing = plan.pricings[0]
+  if (pricing.price) {
+    return `${pricing.price.text || `${pricing.price.value} ${pricing.price.currencyCode}`}`
+  }
+  
+  return 'Price not available'
+}
+
+// Function to get property color
+const getPropertyColor = (propName) => {
+  const colorMap = {
+    'cpu': 'blue',
+    'ram': 'green',
+    'disk': 'amber',
+    'storage': 'amber',
+    'bandwidth': 'purple',
+    'network': 'purple',
+    'location': 'red',
+    'region': 'red',
+    'datacenter': 'red'
+  }
+  
+  const key = Object.keys(colorMap).find(key => propName.toLowerCase().includes(key))
+  return key ? colorMap[key] : 'grey'
+}
+
+// Function to add server to cart
+const addServerToCart = async (plan) => {
+  if (!activeCartId.value || !plan.planCode) {
+    showError('Cannot add server to cart. Please select an active cart first.')
+    return
+  }
+  
+  // Set loading state for this specific plan
+  if (plan) {
+    plan.addingToCart = true;
+  }
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    }
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/eco`;
+    
+    console.log('Adding server to cart:', plan.planCode, 'URL:', url);
+    
+    const payload = {
+      duration: selectedDuration.value, // Use selected duration
+      planCode: plan.planCode,
+      pricingMode: "default",
+      quantity: 1
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to add server to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Added ${plan.planCode} to cart successfully!`);
+    console.log('Server added to cart result:', result);
+    
+    // Refresh cart details
+    await fetchActiveCartDetails();
+    
+    // Close the details dialog if it's open
+    if (showServerDetailsDialog.value && selectedServer.value && selectedServer.value.planCode === plan.planCode) {
+      showServerDetailsDialog.value = false;
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('Error adding server to cart:', err);
+    showError(`Error adding server to cart: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    if (plan) {
+      plan.addingToCart = false;
+    }
+  }
+}
+
+// Function to show server details
+const showServerDetails = (plan) => {
+  selectedServer.value = plan;
+  selectedDuration.value = 'P1M'; // Reset to default 1 month
+  showServerDetailsDialog.value = true;
+}
+
+// Fetch servers when token is available and tab is changed to servers
+watch(activeTab, (newTab) => {
+  if (newTab === 'servers' && apiToken.value && (!serverCatalog.value || serverCatalog.value.plans?.length === 0)) {
+    fetchServers()
+  }
+});
 </script>
