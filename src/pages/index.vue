@@ -108,14 +108,353 @@
                     
                     <!-- Cart Items Section -->
                     <v-divider class="my-4"></v-divider>
-                    <div v-if="activeCartDetails.items && activeCartDetails.items.length > 0">
+                    <div v-if="activeCartDetails && activeCartDetails.items && activeCartDetails.items.length > 0">
                       <h3 class="text-subtitle-1 font-weight-bold mb-2">Cart Items</h3>
-                      <v-list>
-                        <v-list-item v-for="(item, index) in activeCartDetails.items" :key="index">
-                          <v-list-item-title>Item #{{ index + 1 }}</v-list-item-title>
-                          <v-list-item-subtitle>{{ item }}</v-list-item-subtitle>
-                        </v-list-item>
-                      </v-list>
+                      <v-card v-for="(itemId, index) in activeCartDetails.items" :key="index" class="mb-4" variant="outlined">
+                        <v-card-item>
+                          <v-card-title>
+                            <div class="d-flex align-center">
+                              <span>Item #{{ index + 1 }}</span>
+                              <v-chip
+                                v-if="cartItemDetails[itemId]"
+                                :color="getItemStatusColor(cartItemDetails[itemId])"
+                                size="small"
+                                class="ml-2"
+                              >
+                                {{ cartItemDetails[itemId]?.status || 'Loading...' }}
+                              </v-chip>
+                            </div>
+                          </v-card-title>
+                          
+                          <v-card-text>
+                            <div v-if="!cartItemDetails[itemId]" class="d-flex align-center">
+                              <v-progress-circular indeterminate size="20" width="2" color="primary" class="mr-2"></v-progress-circular>
+                              <span>Loading item details...</span>
+                            </div>
+                            
+                            <v-row v-else>
+                              <v-col cols="12" sm="6">
+                                <v-card-title>{{ cartItemDetails[itemId]?.description || cartItemDetails[itemId]?.planCode }}</v-card-title>
+                                <v-card-subtitle v-if="cartItemDetails[itemId]?.description && cartItemDetails[itemId]?.planCode">{{ cartItemDetails[itemId]?.planCode }}</v-card-subtitle>
+                                
+                                <v-chip
+                                  v-if="cartItemDetails[itemId]?.settings?.quantity"
+                                  color="primary"
+                                  size="small"
+                                  class="mt-2"
+                                  prepend-icon="mdi-numeric"
+                                >
+                                  Quantity: {{ cartItemDetails[itemId]?.settings?.quantity }}
+                                </v-chip>
+                                
+                                <v-list density="compact" class="mt-2">
+                                  <v-list-item>
+                                    <template v-slot:prepend>
+                                      <v-icon icon="mdi-card-bulleted-outline" color="primary"></v-icon>
+                                    </template>
+                                    <v-list-item-title>Product</v-list-item-title>
+                                    <v-list-item-subtitle>{{ getProductName(cartItemDetails[itemId]?.productId) }}</v-list-item-subtitle>
+                                  </v-list-item>
+                                </v-list>
+                              </v-col>
+                              
+                              <v-col cols="12" sm="6">
+                                <v-list density="compact">
+                                  <v-list-item v-if="cartItemDetails[itemId]?.prices">
+                                    <template v-slot:prepend>
+                                      <v-icon icon="mdi-currency-eur" color="primary"></v-icon>
+                                    </template>
+                                    <v-list-item-title>Price</v-list-item-title>
+                                    <v-list-item-subtitle>{{ getItemPrice(cartItemDetails[itemId]) }}</v-list-item-subtitle>
+                                  </v-list-item>
+                                  
+                                  <v-list-item>
+                                    <template v-slot:prepend>
+                                      <v-icon icon="mdi-cog-outline" color="primary"></v-icon>
+                                    </template>
+                                    <v-list-item-title>Settings</v-list-item-title>
+                                    <v-list-item-subtitle>{{ cartItemDetails[itemId]?.configurations?.length || 0 }} configurations</v-list-item-subtitle>
+                                  </v-list-item>
+                                </v-list>
+                              </v-col>
+                            </v-row>
+
+                            <!-- Pricing summary section if there are prices -->
+                            <v-row>
+                              <v-col v-if="cartItemDetails[itemId]?.prices && cartItemDetails[itemId]?.prices.length > 0" cols="12">
+                                <v-card variant="outlined" class="mt-2">
+                                  <v-card-title class="text-subtitle-1">
+                                    <v-icon icon="mdi-currency-eur" color="primary" class="mr-2"></v-icon>
+                                    Pricing Summary
+                                  </v-card-title>
+                                  <v-card-text>
+                                    <v-table density="compact">
+                                      <thead>
+                                        <tr>
+                                          <th>Type</th>
+                                          <th>Price</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr v-for="(priceItem, priceIndex) in cartItemDetails[itemId].prices" :key="priceIndex">
+                                          <td>{{ priceItem.label }}</td>
+                                          <td>{{ priceItem.price.text || `${priceItem.price.value} ${priceItem.price.currencyCode}` }}</td>
+                                        </tr>
+                                      </tbody>
+                                    </v-table>
+                                  </v-card-text>
+                                </v-card>
+                              </v-col>
+
+                              <!-- Datacenter Configuration -->
+                              <v-col cols="12" class="mt-2">
+                                <v-card variant="outlined">
+                                  <v-card-title class="text-subtitle-1">
+                                    <v-icon icon="mdi-map-marker" color="primary" class="mr-2"></v-icon>
+                                    Datacenter Configuration
+                                  </v-card-title>
+                                  <v-card-text>
+                                    <v-select
+                                      v-model="selectedDatacenters[itemId]"
+                                      :items="availableDatacenters"
+                                      item-title="name"
+                                      item-value="code"
+                                      label="Select Datacenter"
+                                      hint="Choose the datacenter location for this item"
+                                      persistent-hint
+                                      :disabled="activeCartDetails.readOnly || configuringDatacenter[itemId]"
+                                      class="mb-2"
+                                    >
+                                      <template v-slot:item="{ item, props }">
+                                        <v-list-item v-bind="props">
+                                          <template v-slot:prepend>
+                                            <v-icon :icon="getDatacenterIcon(item.raw.code)" color="primary"></v-icon>
+                                          </template>
+                                          <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
+                                          <v-list-item-subtitle>{{ item.raw.code }}</v-list-item-subtitle>
+                                        </v-list-item>
+                                      </template>
+                                    </v-select>
+                                    
+                                    <p class="text-caption mt-1">Current datacenter: 
+                                      <v-chip size="x-small" color="info" v-if="getItemDatacenter(itemId)">
+                                        {{ getItemDatacenter(itemId) }}
+                                      </v-chip>
+                                      <span v-else>Not configured</span>
+                                    </p>
+                                    
+                                    <v-btn 
+                                      color="primary" 
+                                      variant="tonal" 
+                                      size="small"
+                                      class="mt-2"
+                                      :loading="configuringDatacenter[itemId]"
+                                      :disabled="!selectedDatacenters[itemId] || activeCartDetails.readOnly"
+                                      @click="configureItemDatacenter(itemId, selectedDatacenters[itemId])"
+                                    >
+                                      Apply Datacenter
+                                    </v-btn>
+                                  </v-card-text>
+                                </v-card>
+                              </v-col>
+
+                              <!-- OS Configuration -->
+                              <v-col cols="12" class="mt-2">
+                                <v-card variant="outlined">
+                                  <v-card-title class="text-subtitle-1">
+                                    <v-icon icon="mdi-server-network" color="primary" class="mr-2"></v-icon>
+                                    Operating System Configuration
+                                  </v-card-title>
+                                  <v-card-text>
+                                    <v-select
+                                      v-model="selectedOS[itemId]"
+                                      :items="availableOS"
+                                      item-title="name"
+                                      item-value="code"
+                                      label="Select Operating System"
+                                      hint="Choose the OS for this server"
+                                      persistent-hint
+                                      :disabled="activeCartDetails.readOnly || configuringOS[itemId]"
+                                      class="mb-2"
+                                    >
+                                      <template v-slot:item="{ item, props }">
+                                        <v-list-item v-bind="props">
+                                          <template v-slot:prepend>
+                                            <v-icon :icon="getOSIcon(item.raw.code)" color="primary"></v-icon>
+                                          </template>
+                                          <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
+                                          <v-list-item-subtitle>{{ item.raw.code }}</v-list-item-subtitle>
+                                        </v-list-item>
+                                      </template>
+                                    </v-select>
+                                    
+                                    <p class="text-caption mt-1">Current OS: 
+                                      <v-chip size="x-small" color="info" v-if="getItemOS(itemId)">
+                                        {{ getItemOS(itemId) }}
+                                      </v-chip>
+                                      <span v-else>Not configured</span>
+                                    </p>
+                                    
+                                    <v-btn 
+                                      color="primary" 
+                                      variant="tonal" 
+                                      size="small"
+                                      class="mt-2"
+                                      :loading="configuringOS[itemId]"
+                                      :disabled="!selectedOS[itemId] || activeCartDetails.readOnly"
+                                      @click="configureItemOS(itemId, selectedOS[itemId])"
+                                    >
+                                      Apply OS
+                                    </v-btn>
+                                  </v-card-text>
+                                </v-card>
+                              </v-col>
+
+                              <!-- Configuration Details Section -->
+                              <v-col cols="12">
+                                <v-card variant="outlined" class="mt-2">
+                                  <v-card-title class="text-subtitle-1 d-flex align-center">
+                                    <v-icon icon="mdi-cog" color="primary" class="mr-2"></v-icon>
+                                    Configuration Details
+                                    <v-spacer></v-spacer>
+                                    <v-btn
+                                      v-if="!activeCartDetails.readOnly"
+                                      icon="mdi-refresh"
+                                      variant="text"
+                                      size="small"
+                                      color="primary"
+                                      @click="fetchActiveCartDetails"
+                                      :loading="loadingActiveCart"
+                                      :disabled="activeCartDetails.readOnly"
+                                    ></v-btn>
+                                  </v-card-title>
+                                  <v-card-text>
+                                    <div v-if="!cartItemDetails[itemId]?.configurationDetails || cartItemDetails[itemId]?.configurationDetails.length === 0">
+                                      <v-alert
+                                        type="info"
+                                        density="compact"
+                                        variant="tonal"
+                                        text="No configurations found for this item."
+                                        class="mb-2"
+                                      ></v-alert>
+                                    </div>
+                                    <v-table v-else density="compact">
+                                      <thead>
+                                        <tr>
+                                          <th>Configuration ID</th>
+                                          <th>Label</th>
+                                          <th>Value</th>
+                                          <th v-if="!activeCartDetails.readOnly">Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr v-for="(config, configIndex) in cartItemDetails[itemId].configurationDetails" :key="configIndex">
+                                          <td>{{ config.id }}</td>
+                                          <td>{{ config.label }}</td>
+                                          <td>{{ config.value }}</td>
+                                          <td v-if="!activeCartDetails.readOnly">
+                                            <div class="d-flex">
+                                              <v-btn
+                                                density="compact"
+                                                icon="mdi-pencil"
+                                                variant="text"
+                                                color="primary"
+                                                size="small"
+                                                @click="openConfigEditor(itemId, config)"
+                                                :disabled="editingConfiguration[itemId]"
+                                                class="mr-1"
+                                              ></v-btn>
+                                              <v-btn
+                                                density="compact"
+                                                icon="mdi-delete"
+                                                variant="text"
+                                                color="error"
+                                                size="small"
+                                                @click="openDeleteConfirmation(itemId, config)"
+                                                :disabled="editingConfiguration[itemId]"
+                                              ></v-btn>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </v-table>
+                                    
+                                    <!-- Add new configuration section -->
+                                    <div class="mt-4" v-if="!activeCartDetails.readOnly">
+                                      <v-divider class="mb-2"></v-divider>
+                                      <v-row>
+                                        <v-col cols="12">
+                                          <v-select
+                                            v-model="newConfig.label"
+                                            :items="commonConfigurations"
+                                            label="Select Configuration Type"
+                                            density="compact"
+                                            class="mb-2"
+                                            @update:model-value="handleConfigTypeChange"
+                                          ></v-select>
+                                          
+                                          <v-alert 
+                                            v-if="configurationInfo[newConfig.label]" 
+                                            type="info" 
+                                            density="compact" 
+                                            variant="tonal"
+                                            class="mb-2"
+                                          >
+                                            {{ configurationInfo[newConfig.label] }}
+                                          </v-alert>
+                                        </v-col>
+                                        <v-col cols="12">
+                                          <div class="d-flex align-center">
+                                            <v-text-field
+                                              v-if="!isInCommonConfigurations(newConfig.label)"
+                                              v-model="newConfig.label"
+                                              label="Custom Configuration Name"
+                                              density="compact"
+                                              class="mr-2"
+                                              hide-details
+                                            ></v-text-field>
+                                            <v-text-field
+                                              v-model="newConfig.value"
+                                              label="Configuration Value"
+                                              density="compact" 
+                                              class="mr-2"
+                                              hide-details
+                                            ></v-text-field>
+                                            <v-btn
+                                              color="success"
+                                              size="small"
+                                              density="compact"
+                                              @click="addItemConfiguration(itemId, newConfig.label, newConfig.value)"
+                                              :loading="addingConfiguration[itemId]"
+                                              :disabled="!newConfig.label || !newConfig.value"
+                                            >
+                                              Add
+                                            </v-btn>
+                                          </div>
+                                        </v-col>
+                                      </v-row>
+                                    </div>
+                                  </v-card-text>
+                                </v-card>
+                              </v-col>
+                            </v-row>
+                            
+                            <!-- Action buttons -->
+                            <v-card-actions v-if="cartItemDetails[itemId]">
+                              <v-btn
+                                color="error"
+                                variant="text"
+                                prepend-icon="mdi-delete"
+                                @click="removeItemFromCart(itemId)"
+                                :loading="deletingItems[itemId]"
+                                :disabled="activeCartDetails.readOnly"
+                              >
+                                Remove
+                              </v-btn>
+                            </v-card-actions>
+                          </v-card-text>
+                        </v-card-item>
+                      </v-card>
                     </div>
                     <div v-else>
                       <v-alert type="info" text="No items in this cart" class="mt-2"></v-alert>
@@ -610,6 +949,93 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Configuration Editor Dialog -->
+    <v-dialog v-model="configEditorDialog" max-width="500px">
+      <v-card v-if="currentEditConfig.itemId">
+        <v-card-title class="text-h6">
+          Edit Configuration
+        </v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="updateItemConfiguration(currentEditConfig.itemId, currentEditConfig.config.label, currentEditConfig.newValue, currentEditConfig.configId)">
+            <v-list-item>
+              <template v-slot:prepend>
+                <v-icon icon="mdi-label-outline" color="primary"></v-icon>
+              </template>
+              <v-list-item-title>Configuration</v-list-item-title>
+              <v-list-item-subtitle>{{ currentEditConfig.config.label }}</v-list-item-subtitle>
+            </v-list-item>
+            
+            <v-list-item>
+              <template v-slot:prepend>
+                <v-icon icon="mdi-play-outline" color="primary"></v-icon>
+              </template>
+              <v-list-item-title>Current Value</v-list-item-title>
+              <v-list-item-subtitle>{{ currentEditConfig.config.value }}</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-divider class="my-3"></v-divider>
+            
+            <v-text-field
+              v-model="currentEditConfig.newValue"
+              label="New Value"
+              hint="Enter the new configuration value"
+              persistent-hint
+              :rules="[v => !!v || 'Value is required']"
+              required
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="error"
+            variant="text"
+            @click="configEditorDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="editingConfiguration[currentEditConfig.itemId]"
+            @click="updateItemConfiguration(currentEditConfig.itemId, currentEditConfig.config.label, currentEditConfig.newValue, currentEditConfig.configId)"
+          >
+            Update
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="confirmDeleteDialog" max-width="400px">
+      <v-card>
+        <v-card-title class="text-h6">
+          Delete Configuration
+        </v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the configuration "{{ configToDelete.label }}"?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey"
+            variant="text"
+            @click="confirmDeleteDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="elevated"
+            :loading="deleteConfigLoading[configToDelete.itemId] && deleteConfigLoading[configToDelete.itemId][configToDelete.configId]"
+            @click="confirmDelete"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -634,6 +1060,10 @@ const showTokenSaved = ref(false)
 const activeCartId = ref(null)
 const activeCartDetails = ref(null)
 const loadingActiveCart = ref(false)
+
+// Cart item details
+const cartItemDetails = ref({});
+const deletingItems = ref({});
 
 // Create cart related refs
 const showCreateCartDialog = ref(false)
@@ -705,6 +1135,67 @@ const durations = [
   { value: 'P6M', text: '6 Months' },
   { value: 'P12M', text: '12 Months' }
 ];
+
+// Datacenter configuration
+const selectedDatacenters = ref({});
+const configuringDatacenter = ref({});
+const availableDatacenters = [
+  { code: 'bhs', name: 'Beauharnois, Canada' },
+  { code: 'rbx', name: 'Roubaix, France' },
+  { code: 'gra', name: 'Gravelines, France' },
+  { code: 'fra', name: 'Frankfurt, Germany' }
+];
+
+// OS configuration
+const selectedOS = ref({});
+const configuringOS = ref({});
+const availableOS = [
+  { code: 'none_64.en', name: 'No OS (64-bit)' }
+  // More OS options can be added here when available
+];
+
+// Configuration editing
+const editingConfiguration = ref({});
+const addingConfiguration = ref({});
+const deleteConfigLoading = ref({});
+const newConfig = ref({ label: '', value: '' });
+const configEditorDialog = ref(false);
+const currentEditConfig = ref({ itemId: null, config: null, newValue: '', configId: null });
+
+// Common configurations
+const commonConfigurations = [
+  'dedicated_datacenter',
+  'hostname',
+  'storage_size',
+  'cpu_count',
+  'memory_size',
+  'os_type',
+  'network_type',
+  'backup_option',
+  'monitoring_level',
+  'custom_configuration' // This will allow users to enter a custom configuration name
+];
+
+// Configuration info descriptions
+const configurationInfo = {
+  'dedicated_datacenter': 'Set the datacenter where your server will be located (bhs, rbx, gra, fra).',
+  'hostname': 'Set the hostname for your server, e.g., server1.example.com',
+  'storage_size': 'Specify storage size in GB, e.g., 500',
+  'cpu_count': 'Specify the number of CPU cores, e.g., 4',
+  'memory_size': 'Specify RAM size in GB, e.g., 32',
+  'os_type': 'Specify operating system, e.g., ubuntu20, centos8, windows2019',
+  'network_type': 'Specify network configuration, e.g., public, private, hybrid',
+  'backup_option': 'Specify backup option, e.g., daily, weekly, none',
+  'monitoring_level': 'Specify monitoring level, e.g., basic, standard, premium'
+};
+
+// Available configurations
+const loadingAvailableConfigurations = ref({});
+const itemAvailableConfigurations = ref({});
+
+// Add confirmation dialog refs
+const confirmDeleteDialog = ref(false);
+const configToDelete = ref({ itemId: null, configId: null, label: '' });
 
 // On mounted, load saved site from localStorage
 onMounted(() => {
@@ -986,6 +1477,11 @@ const fetchActiveCartDetails = async () => {
     const cartDetails = await response.json()
     activeCartDetails.value = cartDetails
     console.log('Active cart details:', cartDetails)
+    
+    // Fetch details for each item
+    if (cartDetails.items && cartDetails.items.length > 0) {
+      fetchCartItemDetails(cartDetails.items);
+    }
   } catch (err) {
     console.error('Error fetching active cart details:', err)
     showError(`Error fetching active cart details: ${err.message}`)
@@ -994,6 +1490,166 @@ const fetchActiveCartDetails = async () => {
     loadingActiveCart.value = false
   }
 }
+
+// Function to fetch item details
+const fetchCartItemDetails = async (itemIds) => {
+  if (!apiToken.value || !activeCartId.value || !itemIds || itemIds.length === 0) return;
+  
+  const headers = {
+    'Authorization': `Bearer ${apiToken.value}`,
+    'Content-Type': 'application/json'
+  };
+  
+  const apiEndpoint = getApiEndpoint();
+  
+  // Fetch details for each item in parallel
+  const promises = itemIds.map(async (itemId) => {
+    try {
+      const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}`;
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        console.error(`Failed to fetch item ${itemId} details:`, response.status);
+        return;
+      }
+      
+      const itemDetails = await response.json();
+      cartItemDetails.value[itemId] = itemDetails;
+      console.log(`Item ${itemId} details:`, itemDetails);
+      
+      // Fetch configuration details if configurations array exists
+      if (itemDetails.configurations && Array.isArray(itemDetails.configurations) && itemDetails.configurations.length > 0) {
+        // Store the configuration IDs
+        const configIds = [...itemDetails.configurations];
+        // Initialize configurations array to store detailed config objects
+        cartItemDetails.value[itemId].configurationDetails = [];
+        
+        // Fetch each configuration detail
+        const configPromises = configIds.map(async (configId) => {
+          try {
+            const configUrl = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
+            const configResponse = await fetch(configUrl, { headers });
+            
+            if (!configResponse.ok) {
+              console.error(`Failed to fetch configuration ${configId} details:`, configResponse.status);
+              return;
+            }
+            
+            const configDetails = await configResponse.json();
+            console.log(`Configuration ${configId} details:`, configDetails);
+            
+            // Add to the item's configuration details array
+            cartItemDetails.value[itemId].configurationDetails.push(configDetails);
+          } catch (err) {
+            console.error(`Error fetching configuration ${configId} details:`, err);
+          }
+        });
+        
+        await Promise.all(configPromises);
+      }
+    } catch (err) {
+      console.error(`Error fetching item ${itemId} details:`, err);
+    }
+  });
+  
+  await Promise.all(promises);
+}
+
+// Function to remove item from cart
+const removeItemFromCart = async (itemId) => {
+  if (!apiToken.value || !activeCartId.value) return;
+  
+  deletingItems.value[itemId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}`;
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to remove item: ${response.status}`);
+    }
+    
+    showSuccess('Item removed from cart successfully');
+    
+    // Remove the item from cartItemDetails
+    delete cartItemDetails.value[itemId];
+    
+    // Refresh cart details
+    await fetchActiveCartDetails();
+  } catch (err) {
+    console.error('Error removing item from cart:', err);
+    showError(`Error removing item from cart: ${err.message}`);
+  } finally {
+    deletingItems.value[itemId] = false;
+  }
+}
+
+// Function to format duration string
+const formatDuration = (duration) => {
+  if (!duration) return 'N/A';
+  
+  // Convert ISO 8601 duration format to human-readable
+  const regex = /P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/;
+  const matches = duration.match(regex);
+  
+  if (!matches) return duration;
+  
+  const [, years, months, days, hours, minutes, seconds] = matches;
+  const parts = [];
+  
+  if (years) parts.push(`${years} Year${years > 1 ? 's' : ''}`);
+  if (months) parts.push(`${months} Month${months > 1 ? 's' : ''}`);
+  if (days) parts.push(`${days} Day${days > 1 ? 's' : ''}`);
+  if (hours) parts.push(`${hours} Hour${hours > 1 ? 's' : ''}`);
+  if (minutes) parts.push(`${minutes} Minute${minutes > 1 ? 's' : ''}`);
+  if (seconds) parts.push(`${seconds} Second${seconds > 1 ? 's' : ''}`);
+  
+  return parts.join(', ') || duration;
+};
+
+// Function to get item status color
+const getItemStatusColor = (item) => {
+  const statusColors = {
+    'ok': 'success',
+    'pending': 'warning',
+    'error': 'error',
+    'delivered': 'success',
+    'cancelled': 'error'
+  };
+  
+  return statusColors[item?.status?.toLowerCase()] || 'grey';
+};
+
+// Function to get item price
+const getItemPrice = (item) => {
+  if (!item?.prices || item.prices.length === 0) {
+    return 'Price not available';
+  }
+  
+  // Try to find the total price first
+  const totalPrice = item.prices.find(p => p.label === 'TOTAL');
+  if (totalPrice && totalPrice.price) {
+    return totalPrice.price.text || `${totalPrice.price.value} ${totalPrice.price.currencyCode}`;
+  }
+  
+  // Fall back to the first price
+  const firstPrice = item.prices[0];
+  if (firstPrice && firstPrice.price) {
+    return firstPrice.price.text || `${firstPrice.price.value} ${firstPrice.price.currencyCode}`;
+  }
+  
+  return 'Price not available';
+};
 
 // Function to fetch server catalog
 const fetchServers = async () => {
@@ -1159,4 +1815,480 @@ watch(activeTab, (newTab) => {
     fetchServers()
   }
 });
+
+// Function to get a readable product name from product ID
+const getProductName = (productId) => {
+  if (!productId) return 'N/A';
+  
+  const productMap = {
+    'eco': 'Eco Server',
+    'domain': 'Domain Name',
+    'dedicated': 'Dedicated Server',
+    'vps': 'Virtual Private Server',
+    'cloud': 'Cloud Service',
+    'hosting': 'Web Hosting'
+  };
+  
+  return productMap[productId] || productId;
+};
+
+// Function to get datacenter icon based on code
+const getDatacenterIcon = (code) => {
+  const iconMap = {
+    'bhs': 'mdi-map-marker-radius',
+    'rbx': 'mdi-map-marker-radius',
+    'gra': 'mdi-map-marker-radius',
+    'fra': 'mdi-map-marker-radius'
+  };
+  
+  return iconMap[code] || 'mdi-map-marker';
+};
+
+// Function to get the current datacenter for an item
+const getItemDatacenter = (itemId) => {
+  if (!cartItemDetails.value[itemId] || !cartItemDetails.value[itemId].configurations) {
+    return null;
+  }
+  
+  const datacenterConfig = cartItemDetails.value[itemId].configurations.find(
+    config => config.label === 'dedicated_datacenter'
+  );
+  
+  return datacenterConfig ? datacenterConfig.value : null;
+};
+
+// Function to configure datacenter for a cart item
+const configureItemDatacenter = async (itemId, datacenterCode) => {
+  if (!apiToken.value || !activeCartId.value || !itemId || !datacenterCode) {
+    showError('Cannot configure datacenter. Missing required information.');
+    return;
+  }
+  
+  // Set loading state
+  configuringDatacenter.value[itemId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
+    
+    const payload = {
+      label: "dedicated_datacenter",
+      value: datacenterCode
+    };
+    
+    console.log(`Configuring datacenter for item ${itemId} to ${datacenterCode}:`, payload);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to configure datacenter: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Datacenter configured to ${datacenterCode} successfully!`);
+    console.log('Datacenter configuration result:', result);
+    
+    // Refresh cart item details
+    await fetchActiveCartDetails();
+    
+    return result;
+  } catch (err) {
+    console.error('Error configuring datacenter:', err);
+    showError(`Error configuring datacenter: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    configuringDatacenter.value[itemId] = false;
+  }
+};
+
+// Function to open the configuration editor dialog
+const openConfigEditor = (itemId, config) => {
+  currentEditConfig.value = {
+    itemId: itemId,
+    config: { ...config },
+    newValue: config.value,
+    configId: config.id
+  };
+  configEditorDialog.value = true;
+};
+
+// Function to update an item configuration
+const updateItemConfiguration = async (itemId, label, value, configId = null) => {
+  if (!apiToken.value || !activeCartId.value || !itemId) {
+    showError('Cannot update configuration. Missing required information.');
+    return;
+  }
+  
+  // Set loading state
+  editingConfiguration.value[itemId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    let url;
+    let method;
+    
+    // If configId is provided, update existing configuration 
+    if (configId) {
+      url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
+      method = 'PUT';
+    } else {
+      // Add new configuration
+      url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
+      method = 'POST';
+    }
+    
+    const payload = {
+      label: label,
+      value: value
+    };
+    
+    console.log(`${configId ? 'Updating' : 'Adding'} configuration for item ${itemId}:`, payload);
+    
+    const response = await fetch(url, {
+      method: method,
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to ${configId ? 'update' : 'add'} configuration: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Configuration ${label} ${configId ? 'updated' : 'added'} successfully!`);
+    console.log('Configuration update result:', result);
+    
+    // Refresh cart item details
+    await fetchActiveCartDetails();
+    
+    // Reset the new config form
+    if (label === newConfig.value.label) {
+      newConfig.value = { label: '', value: '' };
+    }
+    
+    // Close dialog if it was from the dialog
+    configEditorDialog.value = false;
+    
+    return result;
+  } catch (err) {
+    console.error(`Error ${configId ? 'updating' : 'adding'} configuration:`, err);
+    showError(`Error ${configId ? 'updating' : 'adding'} configuration: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    editingConfiguration.value[itemId] = false;
+  }
+};
+
+// Function to add a new configuration to an item
+const addItemConfiguration = async (itemId, label, value) => {
+  if (!label || !value) {
+    showError('Configuration name and value are required');
+    return;
+  }
+  
+  addingConfiguration.value[itemId] = true;
+  
+  try {
+    await updateItemConfiguration(itemId, label, value);
+    return true;
+  } finally {
+    addingConfiguration.value[itemId] = false;
+  }
+};
+
+// Function to check if a configuration label is in the common configurations list
+const isInCommonConfigurations = (label) => {
+  return label !== 'custom_configuration' && commonConfigurations.includes(label);
+};
+
+// Function to handle configuration type change
+const handleConfigTypeChange = (label) => {
+  // If the user selects custom_configuration, empty the label field to allow custom input
+  if (label === 'custom_configuration') {
+    newConfig.value.label = '';
+  }
+  
+  // Clear the value field when changing configuration type
+  newConfig.value.value = '';
+  
+  // If selecting datacenter config, set default available values
+  if (label === 'dedicated_datacenter') {
+    // Auto-select the first datacenter in the dropdown
+    if (availableDatacenters.length > 0) {
+      selectedDatacenters.value[currentEditConfig.value.itemId] = availableDatacenters[0].code;
+    }
+  }
+};
+
+// Function to fetch available configurations for an item
+const fetchItemAvailableConfigurations = async (itemId) => {
+  if (!apiToken.value || !activeCartId.value || !itemId) {
+    showError('Cannot fetch configurations. Missing required information.');
+    return;
+  }
+  
+  // Set loading state
+  loadingAvailableConfigurations.value[itemId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configurations`;
+    
+    console.log(`Fetching available configurations for item ${itemId}`);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        // No available configurations endpoint
+        showInfo(`No additional configuration options available for this item.`);
+        itemAvailableConfigurations.value[itemId] = [];
+        return [];
+      }
+      
+      const errorData = await response.json();
+      throw new Error(`Failed to fetch configurations: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    console.log('Available configurations:', result);
+    
+    // Store the available configurations
+    itemAvailableConfigurations.value[itemId] = result;
+    
+    // If there are available configurations, update the common configurations list
+    if (result && result.length > 0) {
+      // Extract configuration labels and add them to commonConfigurations if not already present
+      const configLabels = result.map(config => config.name || config.label);
+      
+      configLabels.forEach(label => {
+        if (!commonConfigurations.includes(label)) {
+          commonConfigurations.push(label);
+        }
+      });
+      
+      showSuccess(`Found ${result.length} available configuration options`);
+    } else {
+      showInfo('No additional configuration options available');
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('Error fetching configurations:', err);
+    showError(`Error fetching configurations: ${err.message}`);
+    return [];
+  } finally {
+    // Reset loading state
+    loadingAvailableConfigurations.value[itemId] = false;
+  }
+};
+
+// Function to show info notification
+const showInfo = (message) => {
+  // We can reuse the success snackbar but with a different color
+  successMessage.value = message;
+  // Create a temporary div to store the snackbar and change its color
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = `<style>.v-snackbar.info-snackbar .v-snackbar__wrapper { background-color: #2196F3 !important; }</style>`;
+  document.body.appendChild(tempDiv);
+  
+  // Add the info class to the snackbar
+  const snackbar = document.querySelector('.v-snackbar');
+  if (snackbar) {
+    snackbar.classList.add('info-snackbar');
+  }
+  
+  showSuccessSnackbar.value = true;
+  
+  // Remove the style after the snackbar is closed
+  setTimeout(() => {
+    document.body.removeChild(tempDiv);
+    if (snackbar) {
+      snackbar.classList.remove('info-snackbar');
+    }
+  }, 3000);
+};
+
+// Function to delete a configuration
+const deleteItemConfiguration = async (itemId, configId) => {
+  if (!apiToken.value || !activeCartId.value || !itemId || !configId) {
+    showError('Cannot delete configuration. Missing required information.');
+    return;
+  }
+  
+  // Set loading state for the specific config
+  if (!deleteConfigLoading.value[itemId]) {
+    deleteConfigLoading.value[itemId] = {};
+  }
+  deleteConfigLoading.value[itemId][configId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration/${configId}`;
+    
+    console.log(`Deleting configuration ${configId} for item ${itemId}`);
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to delete configuration: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    showSuccess('Configuration deleted successfully!');
+    
+    // Refresh cart item details
+    await fetchActiveCartDetails();
+    
+    return true;
+  } catch (err) {
+    console.error('Error deleting configuration:', err);
+    showError(`Error deleting configuration: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    if (deleteConfigLoading.value[itemId]) {
+      deleteConfigLoading.value[itemId][configId] = false;
+    }
+  }
+};
+
+// Function to open the delete confirmation dialog
+const openDeleteConfirmation = (itemId, config) => {
+  configToDelete.value = {
+    itemId: itemId,
+    configId: config.id,
+    label: config.label
+  };
+  confirmDeleteDialog.value = true;
+};
+
+// Function to confirm and process deletion
+const confirmDelete = async () => {
+  const { itemId, configId } = configToDelete.value;
+  await deleteItemConfiguration(itemId, configId);
+  confirmDeleteDialog.value = false;
+};
+
+// Function to get OS icon based on code
+const getOSIcon = (code) => {
+  const iconMap = {
+    'none_64.en': 'mdi-minus-circle',
+    'ubuntu': 'mdi-ubuntu',
+    'windows': 'mdi-microsoft-windows',
+    'centos': 'mdi-linux',
+    'debian': 'mdi-debian'
+  };
+  
+  // Check if code contains any of the keys
+  for (const key in iconMap) {
+    if (code.includes(key)) {
+      return iconMap[key];
+    }
+  }
+  
+  return 'mdi-server-network';
+};
+
+// Function to get the current OS for an item
+const getItemOS = (itemId) => {
+  if (!cartItemDetails.value[itemId] || !cartItemDetails.value[itemId].configurationDetails) {
+    return null;
+  }
+  
+  const osConfig = cartItemDetails.value[itemId].configurationDetails.find(
+    config => config.label === 'dedicated_os'
+  );
+  
+  return osConfig ? osConfig.value : null;
+};
+
+// Function to configure OS for a cart item
+const configureItemOS = async (itemId, osCode) => {
+  if (!apiToken.value || !activeCartId.value || !itemId || !osCode) {
+    showError('Cannot configure OS. Missing required information.');
+    return;
+  }
+  
+  // Set loading state
+  configuringOS.value[itemId] = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/item/${itemId}/configuration`;
+    
+    const payload = {
+      label: "dedicated_os",
+      value: osCode
+    };
+    
+    console.log(`Configuring OS for item ${itemId} to ${osCode}:`, payload);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to configure OS: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`OS configured to ${osCode} successfully!`);
+    console.log('OS configuration result:', result);
+    
+    // Refresh cart item details
+    await fetchActiveCartDetails();
+    
+    return result;
+  } catch (err) {
+    console.error('Error configuring OS:', err);
+    showError(`Error configuring OS: ${err.message}`);
+    return null;
+  } finally {
+    // Reset loading state
+    configuringOS.value[itemId] = false;
+  }
+};
 </script>
