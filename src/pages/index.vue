@@ -1,6 +1,10 @@
 <template>
   <v-container>
     <v-card>
+      <v-card-title class="text-h4 font-weight-bold d-flex align-center">
+        <v-icon icon="mdi-cart" color="primary" class="mr-2"></v-icon>
+        OVH Cart
+      </v-card-title>
       <v-tabs
         v-model="activeTab"
         bg-color="primary"
