@@ -705,6 +705,31 @@
               </v-form>
             </v-card-text>
           </v-window-item>
+
+          <!-- About Tab -->
+          <v-window-item value="about">
+            <v-card-title class="text-h5 py-4">About OVH Cart</v-card-title>
+            <v-card-text>
+              <v-card variant="outlined" class="mb-4">
+                <v-card-text>
+                  <div class="d-flex align-center mb-4">
+                    <v-icon icon="mdi-github" color="primary" size="large" class="mr-2"></v-icon>
+                    <h3 class="text-h6">GitHub Repository</h3>
+                  </div>
+                  <p class="mb-2">OVH Cart is an open-source project hosted on GitHub.</p>
+                  <v-btn
+                    color="primary"
+                    variant="outlined"
+                    prepend-icon="mdi-github"
+                    href="https://github.com/orvice/ovhcart"
+                    target="_blank"
+                  >
+                    View on GitHub
+                  </v-btn>
+                </v-card-text>
+              </v-card>
+            </v-card-text>
+          </v-window-item>
         </v-window>
       </v-card-text>
     </v-card>
@@ -981,7 +1006,8 @@ const tabs = [
   { id: 'cart', name: 'Shopping Cart', icon: 'mdi-cart' },
   { id: 'servers', name: 'Servers', icon: 'mdi-server' },
   { id: 'me', name: 'User Profile', icon: 'mdi-account' },
-  { id: 'settings', name: 'Settings', icon: 'mdi-cog' }
+  { id: 'settings', name: 'Settings', icon: 'mdi-cog' },
+  { id: 'about', name: 'About', icon: 'mdi-information' }
 ]
 
 const activeTab = ref('cart')
