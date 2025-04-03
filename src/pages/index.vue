@@ -591,6 +591,28 @@
               ></v-alert>
               
               <div v-else>
+                <!-- Manual Plan Code Input Button - Moved to top -->
+                <v-card variant="outlined" class="mb-4 pa-4">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon icon="mdi-keyboard" color="primary" class="mr-2"></v-icon>
+                    Manually Add Server by Plan Code
+                  </v-card-title>
+                  <v-card-text>
+                    <p class="text-body-2 mb-4">
+                      If you know the exact OVH plan code for a server, you can manually add it to your cart.
+                    </p>
+                    <v-btn 
+                      color="primary" 
+                      variant="elevated" 
+                      prepend-icon="mdi-plus"
+                      @click="showManualPlanCodeDialog = true"
+                      :disabled="!activeCartId"
+                    >
+                      Enter Plan Code
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+                
                 <v-row>
                   <v-col cols="12" md="4" v-for="(plan, index) in serverCatalog.plans" :key="index">
                     <v-card class="h-100">
@@ -1032,6 +1054,68 @@
             @click="confirmDelete"
           >
             Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Manual Plan Code Dialog -->
+    <v-dialog v-model="showManualPlanCodeDialog" max-width="500px">
+      <v-card>
+        <v-card-title class="text-h6">
+          Add Server by Plan Code
+        </v-card-title>
+        <v-card-text>
+          <v-form @submit.prevent="addServerByPlanCode">
+            <v-text-field
+              v-model="manualPlanCode"
+              label="Plan Code"
+              hint="Enter the exact OVH plan code"
+              persistent-hint
+              :rules="[v => !!v || 'Plan code is required']"
+              required
+              class="mb-4"
+            ></v-text-field>
+            
+            <v-select
+              v-model="manualDuration"
+              :items="durations"
+              item-title="text"
+              item-value="value"
+              label="Duration"
+              hint="Select contract duration"
+              persistent-hint
+              class="mb-4"
+            ></v-select>
+            
+            <v-text-field
+              v-model="manualQuantity"
+              label="Quantity"
+              type="number"
+              min="1"
+              hint="Number of items to add"
+              persistent-hint
+              :rules="[v => !!v && v > 0 || 'Quantity must be at least 1']"
+              required
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            color="error"
+            variant="text"
+            @click="showManualPlanCodeDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="addingManualPlan"
+            @click="addServerByPlanCode"
+          >
+            Add to Cart
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2289,6 +2373,73 @@ const configureItemOS = async (itemId, osCode) => {
   } finally {
     // Reset loading state
     configuringOS.value[itemId] = false;
+  }
+};
+
+// Manual plan code refs
+const showManualPlanCodeDialog = ref(false);
+const addingManualPlan = ref(false);
+const manualPlanCode = ref('');
+const manualDuration = ref('P1M');
+const manualQuantity = ref(1);
+
+// Function to add server to cart by manually entered plan code
+const addServerByPlanCode = async () => {
+  if (!activeCartId.value || !manualPlanCode.value || !manualDuration.value || !manualQuantity.value || manualQuantity.value < 1) {
+    showError('Please enter a valid plan code, duration and quantity.');
+    return;
+  }
+  
+  addingManualPlan.value = true;
+  
+  try {
+    const headers = {
+      'Authorization': `Bearer ${apiToken.value}`,
+      'Content-Type': 'application/json'
+    };
+    
+    const apiEndpoint = getApiEndpoint();
+    const url = `${apiEndpoint}/order/cart/${activeCartId.value}/eco`;
+    
+    console.log('Adding server to cart by manual plan code:', manualPlanCode.value, 'URL:', url);
+    
+    const payload = {
+      duration: manualDuration.value,
+      planCode: manualPlanCode.value,
+      pricingMode: "default",
+      quantity: parseInt(manualQuantity.value)
+    };
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to add server to cart: ${response.status} - ${errorData.message || JSON.stringify(errorData)}`);
+    }
+    
+    const result = await response.json();
+    showSuccess(`Added ${manualPlanCode.value} to cart successfully!`);
+    console.log('Manual server added to cart result:', result);
+    
+    // Reset form
+    manualPlanCode.value = '';
+    manualQuantity.value = 1;
+    showManualPlanCodeDialog.value = false;
+    
+    // Refresh cart details
+    await fetchActiveCartDetails();
+    
+    return result;
+  } catch (err) {
+    console.error('Error adding server to cart:', err);
+    showError(`Error adding server to cart: ${err.message}`);
+    return null;
+  } finally {
+    addingManualPlan.value = false;
   }
 };
 </script>
