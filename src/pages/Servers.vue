@@ -11,6 +11,21 @@
           Subsidiary: {{ selectedSite?.code || 'IE' }}
         </v-chip>
         <v-spacer />
+        <div class="d-flex flex-column align-end mr-4">
+          <div 
+            v-if="lastRefreshTime"
+            class="text-caption text-right mb-1"
+          >
+            Last updated: {{ formatRefreshTime(lastRefreshTime) }}
+            <v-chip 
+              size="x-small" 
+              :color="isFromCache ? 'amber' : 'success'" 
+              class="ml-2"
+            >
+              {{ isFromCache ? 'Cache' : 'API' }}
+            </v-chip>
+          </div>
+        </div>
         <v-btn
           color="primary"
           variant="elevated"
@@ -220,7 +235,7 @@
                     color="primary"
                     variant="text"
                     :loading="plan.addingToCart"
-                    :disabled="!activeCartId || !plan.planCode"
+                    :disabled="!props.activeCartId || !plan.planCode"
                     @click="addServerToCart(plan)"
                   >
                     Add to Cart
@@ -417,6 +432,8 @@ const manualQuantity = ref(1);
 const showServerDetailsDialog = ref(false);
 const selectedServer = ref(null);
 const selectedDuration = ref('P1M');
+const lastRefreshTime = ref(null); // 最后刷新时间
+const isFromCache = ref(false); // 数据是否来自缓存
 
 // Durations list for selection
 const durations = [
@@ -599,10 +616,15 @@ const fetchServers = async (forceRefresh = false) => {
     const cachedData = getCachedServers(subsidiaryCode);
     if (cachedData) {
       serverCatalog.value = cachedData;
+      lastRefreshTime.value = new Date();
+      isFromCache.value = true;
       loading.value = false;
       return;
     }
   }
+  
+  // Mark that we're loading from API, not cache
+  isFromCache.value = false;
   
   try {
     const headers = {
@@ -632,6 +654,7 @@ const fetchServers = async (forceRefresh = false) => {
     cacheServerData(data, subsidiaryCode);
     
     serverCatalog.value = data;
+    lastRefreshTime.value = new Date();
     console.log('Server catalog for subsidiary', subsidiaryCode, ':', data);
   } catch (err) {
     console.error('Error fetching server catalog:', err);
@@ -658,7 +681,7 @@ const showError = (message) => {
 
 // Function to add server to cart
 const addServerToCart = async (plan) => {
-  if (!props['active-cart-id'] || !plan.planCode) {
+  if (!props.activeCartId || !plan.planCode) {
     showError('Cannot add server to cart. Please select an active cart first.');
     return;
   }
@@ -675,7 +698,7 @@ const addServerToCart = async (plan) => {
     };
     
     const apiEndpoint = getApiEndpoint();
-    const url = `${apiEndpoint}/order/cart/${props['active-cart-id']}/eco`;
+    const url = `${apiEndpoint}/order/cart/${props.activeCartId}/eco`;
     
     console.log('Adding server to cart:', plan.planCode, 'URL:', url);
     
@@ -741,7 +764,7 @@ const showServerDetails = (plan) => {
 
 // Function to add server by manually entered plan code
 const addServerByPlanCode = async () => {
-  if (!props['active-cart-id'] || !manualPlanCode.value) {
+  if (!props.activeCartId || !manualPlanCode.value) {
     showError('Cannot add server to cart. Please select an active cart first and enter a plan code.');
     return;
   }
@@ -755,7 +778,7 @@ const addServerByPlanCode = async () => {
     };
     
     const apiEndpoint = getApiEndpoint();
-    const url = `${apiEndpoint}/order/cart/${props['active-cart-id']}/eco`;
+    const url = `${apiEndpoint}/order/cart/${props.activeCartId}/eco`;
     
     console.log('Adding manual plan to cart:', manualPlanCode.value, 'URL:', url);
     
@@ -807,6 +830,28 @@ watch(() => props.selectedSite, (newSite, oldSite) => {
     fetchServers();
   }
 }, { deep: true });
+
+// Format the refresh time in a user-friendly way
+const formatRefreshTime = (date) => {
+  if (!date) return '';
+  
+  // Get current date for comparison
+  const now = new Date();
+  const refreshDate = new Date(date);
+  
+  // If same day, just show time
+  if (now.toDateString() === refreshDate.toDateString()) {
+    return refreshDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // Otherwise show date and time
+  return refreshDate.toLocaleString([], { 
+    month: 'short', 
+    day: 'numeric',
+    hour: '2-digit', 
+    minute: '2-digit'
+  });
+};
 
 // Force refresh servers (ignoring cache)
 const forceRefreshServers = () => {
