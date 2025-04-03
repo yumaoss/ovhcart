@@ -121,7 +121,7 @@
                                 size="small"
                                 class="ml-2"
                               >
-                                {{ cartItemDetails[itemId]?.status || 'Loading...' }}
+                                {{ cartItemDetails[itemId]?.readOnly ? 'Read Only' : 'Active' }}
                               </v-chip>
                             </div>
                           </v-card-title>
@@ -1609,15 +1609,10 @@ const formatDuration = (duration) => {
 
 // Function to get item status color
 const getItemStatusColor = (item) => {
-  const statusColors = {
-    'ok': 'success',
-    'pending': 'warning',
-    'error': 'error',
-    'delivered': 'success',
-    'cancelled': 'error'
-  };
-
-  return statusColors[item?.status?.toLowerCase()] || 'grey';
+  if (item?.readOnly) {
+    return 'error';
+  }
+  return 'success';
 };
 
 // Function to get item price
