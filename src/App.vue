@@ -7,5 +7,6 @@
 </template>
 
 <script setup>
-  //
+  // Import the custom theme
+  import '@/assets/theme.css'
 </script>

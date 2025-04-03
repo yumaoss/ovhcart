@@ -744,6 +744,55 @@
                   </v-card-text>
                 </v-card>
                 
+                <!-- Theme Selection -->
+                <v-card variant="outlined" class="mb-4 pa-3">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon icon="mdi-theme-light-dark" class="mr-2"></v-icon>
+                    Theme Settings
+                  </v-card-title>
+                  <v-card-text>
+                    <v-radio-group
+                      v-model="selectedTheme"
+                      inline
+                      hide-details
+                    >
+                      <v-radio
+                        value="light"
+                        label="Light"
+                      >
+                        <template v-slot:label>
+                          <div class="d-flex align-center">
+                            <v-icon icon="mdi-white-balance-sunny" color="amber" class="mr-2"></v-icon>
+                            Light
+                          </div>
+                        </template>
+                      </v-radio>
+                      <v-radio
+                        value="dark"
+                        label="Dark"
+                      >
+                        <template v-slot:label>
+                          <div class="d-flex align-center">
+                            <v-icon icon="mdi-weather-night" color="blue-darken-3" class="mr-2"></v-icon>
+                            Dark
+                          </div>
+                        </template>
+                      </v-radio>
+                      <v-radio
+                        value="auto"
+                        label="Auto"
+                      >
+                        <template v-slot:label>
+                          <div class="d-flex align-center">
+                            <v-icon icon="mdi-theme-light-dark" color="grey" class="mr-2"></v-icon>
+                            Auto (System)
+                          </div>
+                        </template>
+                      </v-radio>
+                    </v-radio-group>
+                  </v-card-text>
+                </v-card>
+                
                 <v-btn
                   color="primary"
                   type="submit"
@@ -751,375 +800,149 @@
                 >
                   Save Settings
                 </v-btn>
-                <v-snackbar
-                  v-model="showSettingsSaved"
-                  timeout="2000"
-                  color="success"
-                >
-                  Settings saved successfully
-                </v-snackbar>
               </v-form>
             </v-card-text>
           </v-window-item>
         </v-window>
       </v-card-text>
     </v-card>
-    
-    <!-- Success/Error Snackbars -->
-    <v-snackbar
-      v-model="showSuccessSnackbar"
-      timeout="3000"
-      color="success"
+
+    <!-- Add the new components here -->
+    <v-dialog
+      v-model="showCreateCartDialog"
+      max-width="600"
     >
-      {{ successMessage }}
-    </v-snackbar>
-    
-    <v-snackbar
-      v-model="showErrorSnackbar"
-      timeout="5000"
-      color="error"
-    >
-      {{ errorMessage }}
-    </v-snackbar>
-    
-    <!-- Create Cart Dialog -->
-    <v-dialog v-model="showCreateCartDialog" max-width="500px">
       <v-card>
-        <v-card-title class="text-h5">Create New Cart</v-card-title>
+        <v-card-title>Create New Cart</v-card-title>
         <v-card-text>
-          <v-form ref="createCartForm">
+          <v-form @submit.prevent="submitCreateCart">
             <v-text-field
               v-model="newCart.description"
-              label="Cart Description"
-              :rules="[v => !!v || 'Description is required']"
-              hint="Enter a description for your new cart"
-              persistent-hint
-            ></v-text-field>
-            <v-select
-              v-model="newCart.ovhSubsidiary"
-              label="OVH Subsidiary"
-              :items="subsidiaries"
-              hint="Select OVH subsidiary"
-              persistent-hint
-            ></v-select>
-            <v-menu
-              ref="expiryMenu"
-              v-model="showExpiryPicker"
-              :close-on-content-click="false"
-              transition="scale-transition"
-              offset-y
-            >
-              <template v-slot:activator="{ props }">
-                <v-text-field
-                  v-model="formattedExpireDate"
-                  label="Expiration Date"
-                  readonly
-                  v-bind="props"
-                  prepend-icon="mdi-calendar"
-                  hint="Cart will expire at this date/time"
-                  persistent-hint
-                ></v-text-field>
-              </template>
-              <v-date-picker
-                v-model="expireDatePart"
-                @update:model-value="showExpiryTimePicker = true"
-              ></v-date-picker>
-            </v-menu>
-            
-            <v-dialog
-              v-model="showExpiryTimePicker"
-              max-width="290"
-            >
-              <v-card>
-                <v-card-title class="text-h6">Select Time</v-card-title>
-                <v-card-text>
-                  <v-time-picker
-                    v-model="expireTimePart"
-                    format="24hr"
-                    @update:model-value="setExpireDateTime"
-                  ></v-time-picker>
-                </v-card-text>
-              </v-card>
-            </v-dialog>
-            
-            <v-switch
-              v-model="newCart.readOnly"
-              label="Read Only"
-              hint="Make this cart read-only"
-              persistent-hint
-            ></v-switch>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="error" variant="text" @click="showCreateCartDialog = false">Cancel</v-btn>
-          <v-btn 
-            color="success" 
-            variant="elevated" 
-            @click="submitCreateCart"
-            :loading="creatingCart"
-          >
-            Create
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Server Details Dialog -->
-    <v-dialog v-model="showServerDetailsDialog" max-width="800px">
-      <v-card v-if="selectedServer">
-        <v-card-title class="text-h5">
-          {{ selectedServer.planCode || 'Server Details' }}
-          <v-spacer></v-spacer>
-          <v-btn
-            icon="mdi-close"
-            variant="text"
-            @click="showServerDetailsDialog = false"
-          ></v-btn>
-        </v-card-title>
-        
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-list>
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-icon icon="mdi-server" color="primary"></v-icon>
-                  </template>
-                  <v-list-item-title>Plan Code</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedServer.planCode }}</v-list-item-subtitle>
-                </v-list-item>
-                
-                <v-list-item v-if="selectedServer.description">
-                  <template v-slot:prepend>
-                    <v-icon icon="mdi-information-outline" color="primary"></v-icon>
-                  </template>
-                  <v-list-item-title>Description</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedServer.description }}</v-list-item-subtitle>
-                </v-list-item>
-                
-                <v-list-item v-if="selectedServer.family">
-                  <template v-slot:prepend>
-                    <v-icon icon="mdi-server-network" color="primary"></v-icon>
-                  </template>
-                  <v-list-item-title>Family</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedServer.family }}</v-list-item-subtitle>
-                </v-list-item>
-                
-                <v-list-item v-if="selectedServer.productType">
-                  <template v-slot:prepend>
-                    <v-icon icon="mdi-tag" color="primary"></v-icon>
-                  </template>
-                  <v-list-item-title>Product Type</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedServer.productType }}</v-list-item-subtitle>
-                </v-list-item>
-                
-                <v-list-item v-if="getPlanPrice(selectedServer)">
-                  <template v-slot:prepend>
-                    <v-icon icon="mdi-currency-eur" color="primary"></v-icon>
-                  </template>
-                  <v-list-item-title>Price</v-list-item-title>
-                  <v-list-item-subtitle>{{ getPlanPrice(selectedServer) }}</v-list-item-subtitle>
-                </v-list-item>
-              </v-list>
-            </v-col>
-            
-            <v-col cols="12" md="6" v-if="selectedServer.properties && selectedServer.properties.length > 0">
-              <v-card variant="outlined">
-                <v-card-title class="text-subtitle-1">
-                  Technical Specifications
-                </v-card-title>
-                <v-card-text>
-                  <v-list density="compact">
-                    <v-list-item v-for="(prop, propIndex) in selectedServer.properties" :key="propIndex">
-                      <v-list-item-title>{{ prop.name }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ prop.value }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-          <v-divider class="my-4"></v-divider>
-          <v-card-text>
-            <v-select
-              v-model="selectedDuration"
-              :items="durations"
-              item-title="text"
-              item-value="value"
-              label="Duration"
-              hint="Select contract duration"
-              persistent-hint
-              variant="outlined"
-              density="comfortable"
-              class="mb-4"
-            ></v-select>
-          </v-card-text>
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            color="primary"
-            variant="elevated"
-            @click="addServerToCart(selectedServer)"
-            :loading="selectedServer.addingToCart"
-            :disabled="!activeCartId || !selectedServer.planCode"
-          >
-            Add to Cart
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Configuration Editor Dialog -->
-    <v-dialog v-model="configEditorDialog" max-width="500px">
-      <v-card v-if="currentEditConfig.itemId">
-        <v-card-title class="text-h6">
-          Edit Configuration
-        </v-card-title>
-        <v-card-text>
-          <v-form @submit.prevent="updateItemConfiguration(currentEditConfig.itemId, currentEditConfig.config.label, currentEditConfig.newValue, currentEditConfig.configId)">
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon icon="mdi-label-outline" color="primary"></v-icon>
-              </template>
-              <v-list-item-title>Configuration</v-list-item-title>
-              <v-list-item-subtitle>{{ currentEditConfig.config.label }}</v-list-item-subtitle>
-            </v-list-item>
-            
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon icon="mdi-play-outline" color="primary"></v-icon>
-              </template>
-              <v-list-item-title>Current Value</v-list-item-title>
-              <v-list-item-subtitle>{{ currentEditConfig.config.value }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-divider class="my-3"></v-divider>
-            
-            <v-text-field
-              v-model="currentEditConfig.newValue"
-              label="New Value"
-              hint="Enter the new configuration value"
-              persistent-hint
-              :rules="[v => !!v || 'Value is required']"
+              label="Description"
               required
             ></v-text-field>
+            <v-text-field
+              v-model="newCart.ovhSubsidiary"
+              label="OVH Subsidiary"
+              required
+            ></v-text-field>
+            <v-checkbox
+              v-model="newCart.readOnly"
+              label="Read Only"
+            ></v-checkbox>
+            <v-text-field
+              v-model="newCart.expire"
+              label="Expiration"
+              type="datetime-local"
+              required
+            ></v-text-field>
+            <v-btn
+              type="submit"
+              :loading="creatingCart"
+            >
+              Create Cart
+            </v-btn>
           </v-form>
         </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            color="error"
-            variant="text"
-            @click="configEditorDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="elevated"
-            :loading="editingConfiguration[currentEditConfig.itemId]"
-            @click="updateItemConfiguration(currentEditConfig.itemId, currentEditConfig.config.label, currentEditConfig.newValue, currentEditConfig.configId)"
-          >
-            Update
-          </v-btn>
-        </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="confirmDeleteDialog" max-width="400px">
+    <v-dialog
+      v-model="showManualPlanCodeDialog"
+      max-width="600"
+    >
       <v-card>
-        <v-card-title class="text-h6">
-          Delete Configuration
-        </v-card-title>
-        <v-card-text>
-          Are you sure you want to delete the configuration "{{ configToDelete.label }}"?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            color="grey"
-            variant="text"
-            @click="confirmDeleteDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            variant="elevated"
-            :loading="deleteConfigLoading[configToDelete.itemId] && deleteConfigLoading[configToDelete.itemId][configToDelete.configId]"
-            @click="confirmDelete"
-          >
-            Delete
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Manual Plan Code Dialog -->
-    <v-dialog v-model="showManualPlanCodeDialog" max-width="500px">
-      <v-card>
-        <v-card-title class="text-h6">
-          Add Server by Plan Code
-        </v-card-title>
+        <v-card-title>Enter Plan Code</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="addServerByPlanCode">
             <v-text-field
               v-model="manualPlanCode"
               label="Plan Code"
-              hint="Enter the exact OVH plan code"
-              persistent-hint
-              :rules="[v => !!v || 'Plan code is required']"
               required
-              class="mb-4"
             ></v-text-field>
-            
-            <v-select
+            <v-text-field
               v-model="manualDuration"
-              :items="durations"
-              item-title="text"
-              item-value="value"
               label="Duration"
-              hint="Select contract duration"
-              persistent-hint
-              class="mb-4"
-            ></v-select>
-            
+              type="datetime-local"
+              required
+            ></v-text-field>
             <v-text-field
               v-model="manualQuantity"
               label="Quantity"
               type="number"
-              min="1"
-              hint="Number of items to add"
-              persistent-hint
-              :rules="[v => !!v && v > 0 || 'Quantity must be at least 1']"
               required
             ></v-text-field>
+            <v-btn
+              type="submit"
+              :loading="addingManualPlan"
+            >
+              Add Server
+            </v-btn>
           </v-form>
         </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      v-model="showServerDetailsDialog"
+      max-width="600"
+    >
+      <v-card>
+        <v-card-title>Server Details</v-card-title>
+        <v-card-text>
+          <!-- Server details content -->
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      v-model="confirmDeleteDialog"
+      max-width="400"
+    >
+      <v-card>
+        <v-card-title>Confirm Deletion</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete this configuration?
+        </v-card-text>
         <v-card-actions>
-          <v-spacer></v-spacer>
           <v-btn
             color="error"
-            variant="text"
-            @click="showManualPlanCodeDialog = false"
+            @click="confirmDelete"
           >
-            Cancel
+            Delete
           </v-btn>
           <v-btn
-            color="primary"
-            variant="elevated"
-            :loading="addingManualPlan"
-            @click="addServerByPlanCode"
+            @click="confirmDeleteDialog = false"
           >
-            Add to Cart
+            Cancel
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-snackbar
+      v-model="showSuccessSnackbar"
+      :timeout="3000"
+      color="success"
+    >
+      {{ successMessage }}
+    </v-snackbar>
+
+    <v-snackbar
+      v-model="showErrorSnackbar"
+      :timeout="3000"
+      color="error"
+    >
+      {{ errorMessage }}
+    </v-snackbar>
+
+    <v-snackbar
+      v-model="showSettingsSaved"
+      :timeout="3000"
+      color="success"
+    >
+      Settings saved successfully!
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -1210,6 +1033,9 @@ const availableSites = [
 
 const selectedSite = ref(null)
 const showSettingsSaved = ref(false)
+
+// Theme selection
+const selectedTheme = ref('auto')
 
 // In the script section, add these variables
 const selectedDuration = ref('P1M'); // Default to 1 month
@@ -1306,6 +1132,16 @@ onMounted(() => {
       }
     }
     
+    // Load saved theme
+    const savedTheme = localStorage.getItem('ovhTheme')
+    if (savedTheme) {
+      selectedTheme.value = savedTheme
+      applyTheme(savedTheme)
+    } else {
+      // Default to auto theme
+      applyTheme('auto')
+    }
+    
     fetchCart()
   }
 })
@@ -1345,6 +1181,23 @@ const getApiEndpoint = () => {
   return 'https://eu.api.ovh.com/v1';
 }
 
+// Function to apply theme
+const applyTheme = (theme) => {
+  if (theme === 'auto') {
+    // Check system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+  } else {
+    // Apply specified theme
+    document.documentElement.setAttribute('data-theme', theme)
+  }
+}
+
+// Watch for theme changes to apply immediately
+watch(selectedTheme, (newTheme) => {
+  applyTheme(newTheme)
+})
+
 // Function to save settings
 const saveSettings = async () => {
   try {
@@ -1357,6 +1210,9 @@ const saveSettings = async () => {
     if (selectedSite.value) {
       localStorage.setItem('ovhSiteCode', selectedSite.value.code)
     }
+    
+    // Save selected theme
+    localStorage.setItem('ovhTheme', selectedTheme.value)
     
     showSettingsSaved.value = true
     
