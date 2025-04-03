@@ -17,7 +17,7 @@
           prepend-icon="mdi-refresh"
           :loading="loading"
           :disabled="!apiToken"
-          @click="fetchServers"
+          @click="forceRefreshServers"
         >
           Refresh Servers
         </v-btn>
@@ -186,32 +186,33 @@
                   
                   <!-- Configuration options -->
                   <div v-if="plan.configurations && plan.configurations.length > 0" class="mt-4">
-                    <v-subheader>Available Configurations</v-subheader>
-                    <div 
-                      v-for="(config, configIndex) in plan.configurations" 
-                      :key="configIndex" 
-                      class="mb-2"
-                    >
-                      <v-chip
-                        size="small"
-                        color="info"
-                        class="mr-2"
+                    <v-list density="compact">
+                      <v-list-subheader>Available Configurations</v-list-subheader>
+                      
+                      <v-list-item
+                        v-for="(config, configIndex) in plan.configurations" 
+                        :key="configIndex"
                       >
-                        {{ config.name }}
-                      </v-chip>
-                      <span 
-                        class="text-caption"
-                      >
-                        {{ config.isMandatory ? '(Required)' : '(Optional)' }}
-                      </span>
-                      <div 
-                          class="mt-1 text-caption"
-                        >
-                        <span v-if="config.values && config.values.length > 0">
-                          Options: {{ config.values.join(', ') }}
-                        </span>
-                      </div>
-                    </div>
+                        <template v-slot:prepend>
+                          <v-chip
+                            size="small"
+                            :color="getPropertyColor(config.name)"
+                            class="mr-2"
+                          >
+                            {{ formatAddonCode(config.name) }}
+                          </v-chip>
+                        </template>
+                        
+                        <v-list-item-title>{{ config.name }}</v-list-item-title>
+                        
+                        <v-list-item-subtitle>
+                          <span class="text-caption">{{ config.isMandatory ? '(Required)' : '(Optional)' }}</span>
+                          <div class="mt-1 text-caption" v-if="config.values && config.values.length > 0">
+                            Options: {{ config.values.join(', ') }}
+                          </div>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
                   </div>
                 </v-card-text>
                 <v-card-actions>
@@ -379,6 +380,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 // Props from parent component
 const props = defineProps({
@@ -528,21 +530,85 @@ const getPropertyColor = (propName) => {
   return key ? colorMap[key] : 'grey';
 };
 
-// Fetch servers from OVH API
-const fetchServers = async () => {
+// Constants for cache management
+const SERVERS_CACHE_KEY = 'ovhcart_servers_cache';
+const CACHE_EXPIRY_MS = 1000 * 60 * 60; // 1 hour cache duration
 
+// Function to check if cache is valid
+const isCacheValid = (cachedData) => {
+  if (!cachedData || !cachedData.timestamp) return false;
   
+  const currentTime = new Date().getTime();
+  const cacheTime = cachedData.timestamp;
+  
+  // Check if cache is still within expiry period
+  return (currentTime - cacheTime) < CACHE_EXPIRY_MS;
+};
+
+// Function to get cached server data
+const getCachedServers = (subsidiaryCode) => {
+  try {
+    const cacheString = localStorage.getItem(SERVERS_CACHE_KEY);
+    if (!cacheString) return null;
+    
+    const cache = JSON.parse(cacheString);
+    
+    // If subsidiary doesn't match cached subsidiary, don't use cache
+    if (cache.subsidiaryCode !== subsidiaryCode) return null;
+    
+    // Check if cache is still valid
+    if (!isCacheValid(cache)) {
+      console.log('Server cache expired');
+      return null;
+    }
+    
+    console.log('Using cached server data');
+    return cache.data;
+  } catch (err) {
+    console.error('Error reading server cache:', err);
+    return null;
+  }
+};
+
+// Function to save server data to cache
+const cacheServerData = (data, subsidiaryCode) => {
+  try {
+    const cacheData = {
+      data,
+      subsidiaryCode,
+      timestamp: new Date().getTime()
+    };
+    
+    localStorage.setItem(SERVERS_CACHE_KEY, JSON.stringify(cacheData));
+    console.log('Servers data cached successfully');
+  } catch (err) {
+    console.error('Error caching server data:', err);
+  }
+};
+
+// Fetch servers from OVH API with optional cache bypass
+const fetchServers = async (forceRefresh = false) => {
   loading.value = true;
   serverError.value = null;
+  
+  // Get the current subsidiary code from the selected site
+  const subsidiaryCode = props.selectedSite ? props.selectedSite.code : 'IE';
+  
+  // Try to get data from cache first (unless force refresh is requested)
+  if (!forceRefresh) {
+    const cachedData = getCachedServers(subsidiaryCode);
+    if (cachedData) {
+      serverCatalog.value = cachedData;
+      loading.value = false;
+      return;
+    }
+  }
   
   try {
     const headers = {
       // 'Authorization': `Bearer ${props['api-token']}`,
       'Content-Type': 'application/json'
     };
-    
-    // Get the current subsidiary code from the selected site
-    const subsidiaryCode = props.selectedSite ? props.selectedSite.code : 'IE';
     
     const apiEndpoint = getApiEndpoint();
     const response = await fetch(`${apiEndpoint}/order/catalog/public/eco?ovhSubsidiary=${subsidiaryCode}`, {
@@ -561,6 +627,9 @@ const fetchServers = async () => {
         plan.addingToCart = false;
       });
     }
+    
+    // Cache the server data
+    cacheServerData(data, subsidiaryCode);
     
     serverCatalog.value = data;
     console.log('Server catalog for subsidiary', subsidiaryCode, ':', data);
@@ -660,11 +729,14 @@ const addSelectedServerToCart = () => {
   }
 };
 
-// Function to show server details
+// Router for navigation
+const router = useRouter();
+
+// Function to navigate to server plan details page
 const showServerDetails = (plan) => {
-  selectedServer.value = plan;
-  selectedDuration.value = 'P1M'; // Reset to default 1 month
-  showServerDetailsDialog.value = true;
+  if (plan && plan.planCode) {
+    router.push(`/plan/${plan.planCode}`);
+  }
 };
 
 // Function to add server by manually entered plan code
@@ -729,16 +801,22 @@ const addServerByPlanCode = async () => {
 };
 
 // Watch for site changes to refresh servers
-watch(() => props['selected-site'], (newSite, oldSite) => {
+watch(() => props.selectedSite, (newSite, oldSite) => {
   if (newSite?.code !== oldSite?.code) {
     console.log('Site changed, refreshing server catalog...');
     fetchServers();
   }
 }, { deep: true });
 
+// Force refresh servers (ignoring cache)
+const forceRefreshServers = () => {
+  console.log('Forcing refresh of server data from API');
+  fetchServers(true);
+};
+
 // Fetch servers on component mount if we have a token
 onMounted(() => {
-  if (props['api-token']) {
+  if (props.apiToken) {
     fetchServers();
   }
 });
