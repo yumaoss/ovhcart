@@ -696,6 +696,14 @@
             </v-card-text>
           </v-window-item>
 
+          <!-- User Profile Tab -->
+          <v-window-item value="me">
+            <me
+              :api-token="apiToken"
+              :selected-site="selectedSite"
+            />
+          </v-window-item>
+
           <!-- Settings Tab -->
           <v-window-item value="settings">
             <v-card-title class="text-h5 py-4">Settings</v-card-title>
@@ -1082,10 +1090,12 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import Me from './Me.vue'
 
 const tabs = [
   { id: 'cart', name: 'Shopping Cart', icon: 'mdi-cart' },
   { id: 'servers', name: 'Servers', icon: 'mdi-server' },
+  { id: 'me', name: 'User Profile', icon: 'mdi-account' },
   { id: 'settings', name: 'Settings', icon: 'mdi-cog' }
 ]
 
